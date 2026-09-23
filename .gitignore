@@ -1,0 +1,12 @@
+.vscode
+/node_modules/
+/dist/
+/storage/public
+.DS_Store
+/src/infrastructure/database/prisma/generated
+/src/infrastructure/database/migrations/
+.vercel
+.env*
+AGENTS.md
+PRD.md
+/sql/

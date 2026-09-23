@@ -1,0 +1,267 @@
+{
+  "info": {
+    "name": "Video Transcoding API",
+    "description": "Collection for /api/v1/videos endpoints.\n\nFlow single PUT:\n1. Presign Upload\n2. PUT file ke `upload.presignUrl` (di luar API)\n3. Trigger Transcode\n4. Get Video (poll status)\n\nFlow multipart:\n1. Create Multipart\n2. PUT tiap part ke `upload.presignPartUrls[i]` (partNumber = i+1)\n3. Complete Multipart (etag dari response header ETag tiap PUT)\n4. Trigger Transcode\n5. Get Video (poll status)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8100"
+    },
+    {
+      "key": "id",
+      "value": "1"
+    },
+    {
+      "key": "uploadId",
+      "value": ""
+    },
+    {
+      "key": "sourceKey",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "API Index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Videos",
+      "item": [
+        {
+          "name": "List Videos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/videos?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "videos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "uploading",
+                  "disabled": true,
+                  "description": "uploading | queued | processing | ready | failed"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.video?.id) pm.collectionVariables.set('id', String(json.video.id));",
+                  "if (json?.video?.sourceKey) pm.collectionVariables.set('sourceKey', json.video.sourceKey);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}"
+          }
+        },
+        {
+          "name": "Create Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.video?.id) pm.collectionVariables.set('id', String(json.video.id));",
+                  "if (json?.video?.sourceKey) pm.collectionVariables.set('sourceKey', json.video.sourceKey);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"sample.mp4\",\n  \"sourceKey\": \"videos/source/2026/manual-sample.mp4\",\n  \"fileSize\": 1048576,\n  \"status\": \"uploading\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos",
+            "description": "Manual create (admin/seed). status optional: uploading | queued | processing | ready | failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload — Single PUT",
+      "item": [
+        {
+          "name": "Presign Upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.video?.id) pm.collectionVariables.set('id', String(json.video.id));",
+                  "if (json?.upload?.key) pm.collectionVariables.set('sourceKey', json.upload.key);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 1048576\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/presign",
+            "description": "contentType: video/mp4 | video/webm | video/quicktime | video/x-matroska\nfileSize max = UPLOAD_SINGLE_MAX_SIZE (default 500MB).\nSetelah ini: PUT binary ke upload.presignUrl dengan header Content-Type sama."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload — Multipart",
+      "item": [
+        {
+          "name": "Create Multipart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.video?.id) pm.collectionVariables.set('id', String(json.video.id));",
+                  "if (json?.upload?.uploadId) pm.collectionVariables.set('uploadId', json.upload.uploadId);",
+                  "if (json?.upload?.key) pm.collectionVariables.set('sourceKey', json.upload.key);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"large-sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 209715200\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/multipart",
+            "description": "fileSize max = UPLOAD_SINGLE_MAX_SIZE (default 1GB).\nResponse sudah berisi upload.presignPartUrls. PUT tiap chunk ke URL itu, simpan ETag."
+          }
+        },
+        {
+          "name": "Presign Parts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uploadId\": \"{{uploadId}}\",\n  \"partNumbers\": [1, 2, 3]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/multipart/parts/presign"
+          }
+        },
+        {
+          "name": "Complete Multipart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uploadId\": \"{{uploadId}}\",\n  \"parts\": [\n    { \"partNumber\": 1, \"etag\": \"REPLACE_WITH_ETAG_PART_1\" },\n    { \"partNumber\": 2, \"etag\": \"REPLACE_WITH_ETAG_PART_2\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/multipart/complete",
+            "description": "etag = header ETag dari response PUT tiap part (termasuk tanda kutip jika S3 mengirimnya)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transcode",
+      "item": [
+        {
+          "name": "Trigger Transcode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/complete",
+            "description": "Verifikasi object ada di storage, lalu enqueue job. Body opsional: { \"uploadId\": \"...\" }"
+          }
+        }
+      ]
+    }
+  ]
+}
