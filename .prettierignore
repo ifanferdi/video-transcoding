@@ -1,0 +1,5 @@
+# Prisma generated artifacts — jangan pernah diformat/diubah
+src/infrastructure/database/prisma/generated/
+src/infrastructure/database/migrations/
+dist/
+node_modules/

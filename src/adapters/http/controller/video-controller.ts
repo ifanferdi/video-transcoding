@@ -1,7 +1,9 @@
 import BaseController from '@/adapters/http/controller/_base-controller';
+import { BaseFindById } from '@/validations/base-validation';
 import {
   CompleteMultipartSchema,
   CreateMultipartSchema,
+  CreateVideoSchema,
   FindAllVideoSchema,
   FindByIdVideoSchema,
   PresignPartSchema,
@@ -37,7 +39,8 @@ export default class VideoController extends BaseController {
    * POST /api/v1/videos — create video record manual
    */
   create = asyncHandler(async (req: e.Request, res: e.Response) => {
-    const video = await this.useCases.videoUseCase.createVideo.execute(req.body);
+    const body = CreateVideoSchema.parse(req.body);
+    const video = await this.useCases.videoUseCase.createVideo.execute(body);
 
     res.status(201).json(video);
   });
@@ -105,5 +108,23 @@ export default class VideoController extends BaseController {
     );
 
     res.status(202).json(result);
+  });
+
+  realtimeProgress = asyncHandler(async (req: e.Request, res: e.Response) => {
+    // ------------------------------------------------------
+    // 1. Setup response header untuk SSE
+    // ------------------------------------------------------
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // Kalau ada Nginx di depan, header ini mencegah Nginx buffering
+    // response (yang bisa bikin event nunggu numpuk dulu baru terkirim)
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const { id } = BaseFindById.parse({ id: req.params.id });
+    BaseFindById.parse({ id });
+
+    await this.useCases.videoUseCase.realtimeProgressVideo.execute({ res, id });
   });
 }

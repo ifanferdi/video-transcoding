@@ -1,7 +1,7 @@
-import e from 'express';
-import { ZodError } from 'zod';
 import config from '@/config/config';
 import { HttpStatusCode } from '@/constants/http-status.constant';
+import e from 'express';
+import { ZodError } from 'zod';
 
 export default function (err: any, _req: e.Request, res: e.Response, _next: e.NextFunction) {
   let message = err.message;

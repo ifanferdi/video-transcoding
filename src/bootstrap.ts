@@ -10,6 +10,7 @@ import TranscodeJobListener from './use-cases/transcode/transcode-job-listener';
 import CreateVideo from './use-cases/video/create-video';
 import FindAllVideo from './use-cases/video/find-all-video';
 import FindByIdVideo from './use-cases/video/find-by-id-video';
+import RealtimeProgressVideo from './use-cases/video/realtime-progress-video';
 import CompleteMultipartUpload from './use-cases/video/upload/complete-multipart-upload';
 import CreateMultipartUpload from './use-cases/video/upload/create-multipart-upload';
 import GeneratePresignUrl from './use-cases/video/upload/generate-presign-url';
@@ -45,6 +46,7 @@ async function setupUseCases(): Promise<UseCases> {
       presignPartUrl: new PresignPartUrl(redisClient),
       completeMultipartUpload: new CompleteMultipartUpload(redisClient),
       uploadComplete: new UploadComplete(redisClient),
+      realtimeProgressVideo: new RealtimeProgressVideo(redisClient),
     },
     transcodeUseCase: { transcodeJobListener: new TranscodeJobListener(redisClient) },
   };

@@ -1,5 +1,3 @@
-import { HttpStatusCode } from '@/constants/http-status.constant';
-
 export const HttpStatusMessage = {
   OK: 'OK',
   CREATED: 'Created',

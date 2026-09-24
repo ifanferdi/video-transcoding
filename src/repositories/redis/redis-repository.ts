@@ -1,4 +1,8 @@
+import config from '@/config/config';
 import { RedisClient } from 'bun';
+
+const TTL_SECONDS = config.redis.ttlSeconds;
+const SNAPSHOT_KEY = config.redis.snapshotKey;
 
 export default class RedisRepository {
   constructor(protected redisClient: RedisClient) {}
@@ -24,5 +28,13 @@ export default class RedisRepository {
 
   async delete(key: string) {
     return await this.redisClient.del(key);
+  }
+
+  async publish(channel: string, payload: string) {
+    // 1. Publish ke channel
+    await this.redisClient.publish(channel, payload);
+
+    // 2. Simpan snapshot
+    await this.set(`${SNAPSHOT_KEY}:${channel}`, payload, TTL_SECONDS);
   }
 }

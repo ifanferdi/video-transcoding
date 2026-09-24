@@ -1,9 +1,7 @@
 import config from '@/config/storage.config';
-import { VideoStatus } from '@/domain/entities/enums/video.enum';
 import BaseUseCase from '@/use-cases/_base-use-case';
 import { CreateMultipartDto, validateVideoExtension } from '@/validations/video-validation';
 import { randomUUID } from 'crypto';
-
 /**
  * Fase 5 — Multipart upload init untuk file besar.
  * Flow: create video record + createMultipartUpload → uploadId.
@@ -16,13 +14,6 @@ export default class CreateMultipartUpload extends BaseUseCase {
 
     const sourceKey = `videos/source/${new Date().getFullYear()}/${randomUUID()}.${ext}`;
 
-    const video = await this.repositories.videoRepository.store({
-      title,
-      sourceKey,
-      fileSize,
-      status: VideoStatus.UPLOADING,
-    });
-
     const uploadId = await this.repositories.tools.storageRepository.createMultipartUpload(
       sourceKey,
       contentType,
@@ -33,7 +24,7 @@ export default class CreateMultipartUpload extends BaseUseCase {
     if (redisRepository) {
       await redisRepository.set(
         `multipart:${uploadId}`,
-        { id: video.id, key: sourceKey },
+        { uploadId, key: sourceKey },
         60 * 60 * 24,
       );
     }
@@ -55,15 +46,12 @@ export default class CreateMultipartUpload extends BaseUseCase {
     );
 
     return {
-      video,
-      upload: {
-        key: sourceKey,
-        uploadId,
-        chunkSize,
-        totalParts,
-        expiresIn: config.expiredTime,
-        presignPartUrls,
-      },
+      key: sourceKey,
+      uploadId,
+      chunkSize,
+      totalParts,
+      expiresIn: config.expiredTime,
+      presignPartUrls,
     };
   }
 

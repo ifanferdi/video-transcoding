@@ -44,7 +44,7 @@ export default class S3StorageRepository {
     return this.s3Client;
   }
 
-  async put(file: Buffer, Key: string) {
+  async upload(file: Buffer, Key: string) {
     return await this.getClient().send(
       new PutObjectCommand({
         Bucket: BUCKET_NAME,
@@ -85,7 +85,6 @@ export default class S3StorageRepository {
       Bucket: BUCKET_NAME,
       Key,
       ContentType: mime.contentType(path.basename(Key)) || undefined,
-      // ContentLength: size,
     };
 
     return await getSignedUrl(this.getClient(), new PutObjectCommand(command), {
@@ -205,7 +204,7 @@ export default class S3StorageRepository {
         await this.uploadDirectory(localPath, key);
       } else {
         const fileBuffer = fs.readFileSync(localPath);
-        await this.put(fileBuffer, key);
+        await this.upload(fileBuffer, key);
       }
     }
   }

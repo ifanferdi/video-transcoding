@@ -9,9 +9,7 @@ const config = {
     name: process.env.APP_NAME || 'Video Transcoding API',
     version: process.env.APP_VERSION || '1.0.0',
     env: (process.env.APP_ENV?.toLowerCase() || 'development') as
-      | 'development'
-      | 'staging'
-      | 'production',
+      'development' | 'staging' | 'production',
     port: APP_PORT,
     url: process.env.APP_URL || `http://localhost:${APP_PORT}`,
   },
@@ -21,7 +19,12 @@ const config = {
     url: process.env.RABBITMQ_URL || 'amqp://localhost:5673',
     exchange: process.env.RABBITMQ_EXCHANGE || 'video_exchange',
   },
-  redis: { url: process.env.REDIS_URL || 'redis://localhost:6381' },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6381',
+    ttlSeconds: process.env.REDIS_TTL_SECONDS ? Number(process.env.REDIS_TTL_SECONDS) : 60 * 6, // 6 jam
+    progressChannelPrefix: process.env.PROGRESS_CHANNEL_PREFIX || 'progress',
+    snapshotKey: process.env.SNAPSHOT_KEY || 'snapshot',
+  },
   cors: {
     origins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
       .split(',')

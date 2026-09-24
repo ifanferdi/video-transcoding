@@ -1,10 +1,10 @@
 import config from '@/config/config';
-import { VideoRelation, VideoStatus } from '@/domain/entities/enums/video.enum';
+import { VideoRelation } from '@/domain/entities/enums/video.enum';
 import { VIDEO_FIELD } from '@/domain/entities/models/video';
 import { ErrorBadRequest } from '@/helpers/error.helper';
+import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import { z } from 'zod';
 import { BaseFindById, BasePagination, NumberSchema, StringSchema } from './base-validation';
-
 const Relations = z.array(z.nativeEnum(VideoRelation)).optional();
 const videoColumns = z.array(z.nativeEnum(VIDEO_FIELD)).optional();
 
@@ -20,14 +20,16 @@ export const FindAllVideoSchema = BasePagination(VIDEO_FIELD).extend({
 
 export const CreateVideoSchema = z.object({
   title: StringSchema.min(1).max(255),
-  sourceKey: StringSchema.min(1),
+  sourceKey: StringSchema.min(1).max(500),
   fileSize: NumberSchema.int().positive().nullable().optional(),
+  thumbnailTimestamp: NumberSchema.max(500),
   status: z.nativeEnum(VideoStatus).optional(),
 });
+
 export const UpdateVideoSchema = z.object({
   id: NumberSchema,
   status: z.nativeEnum(VideoStatus),
-  progress: NumberSchema,
+  hlsKey: StringSchema.max(500).optional(),
   error: StringSchema.optional().nullable(),
 });
 

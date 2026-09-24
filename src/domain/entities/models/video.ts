@@ -1,4 +1,12 @@
 import { VideoScalarFieldEnum } from '@/infrastructure/database/prisma/generated/internal/prismaNamespace';
+import { TrancodingStatus } from '../types/transcode.types';
+
+export interface ProgressEvent {
+  id: number;
+  status: TrancodingStatus;
+  percent: number;
+  updatedAt: Date;
+}
 
 export const VIDEO_FIELD = VideoScalarFieldEnum;
 export type VIDEO_FIELD = (typeof VIDEO_FIELD)[keyof typeof VIDEO_FIELD];

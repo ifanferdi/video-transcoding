@@ -8,7 +8,7 @@ import { RedisClient } from 'bun';
 export default abstract class BaseUseCase {
   protected repositories: Repositories;
 
-  constructor(protected redisClient: RedisClient) {
+  constructor(protected readonly redisClient: RedisClient) {
     this.repositories = {
       videoRepository: new VideoRepository(),
       tools: {

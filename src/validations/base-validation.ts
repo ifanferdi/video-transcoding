@@ -6,9 +6,9 @@ const DateStringSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Invalid date format (YYYY-MM-DD)' })
   .refine((val) => !isString(new Date(val).getTime()), { message: 'Invalid date value' });
 
-export const StringSchema = z.string().trim();
-export const BooleanSchema = z.boolean();
-export const NumberSchema = z.number();
+export const StringSchema = z.coerce.string().trim();
+export const BooleanSchema = z.coerce.boolean();
+export const NumberSchema = z.coerce.number();
 export const DateSchema = z.union([DateStringSchema, z.date()]);
 export const BasePagination = <T extends EnumLike>(columns: T) => {
   const SortFieldEnum = z.nativeEnum(columns);

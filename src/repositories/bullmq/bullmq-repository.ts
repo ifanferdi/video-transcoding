@@ -17,9 +17,9 @@ export default class BullMqRepository {
 
   constructor(protected readonly connection = createBunRedisClient(CreateRedisConnection())) {}
 
-  publishJob = async (
+  publishJob = async <T = Record<string, any>>(
     queue: string,
-    data: Record<string, any>,
+    data: T,
     delay = 0 /** miliseconds */,
     removeOnComplete = true,
     removeOnFail = true,

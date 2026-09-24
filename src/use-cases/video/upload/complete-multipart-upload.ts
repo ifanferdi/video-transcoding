@@ -1,8 +1,7 @@
-import { VideoStatus } from '@/domain/entities/enums/video.enum';
 import { ErrorBadRequest, ErrorNotFound } from '@/helpers/error.helper';
+import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import BaseUseCase from '@/use-cases/_base-use-case';
 import { CompleteMultipartDto } from '@/validations/video-validation';
-
 /**
  * Fase 5 — Complete multipart upload.
  * Flow: validasi session → completeMultipartUpload ke S3 → verifikasi file ada.
@@ -33,8 +32,7 @@ export default class CompleteMultipartUpload extends BaseUseCase {
 
     const updatedVideo = await this.repositories.videoRepository.update({
       id: id,
-      status: VideoStatus.UPLOADING,
-      progress: 0,
+      status: VideoStatus.uploading,
     });
 
     // bersihkan session Redis

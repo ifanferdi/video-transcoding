@@ -17,6 +17,7 @@ export default function VideoRoutes(controller: VideoController) {
   router.get('/', controller.findAll);
   router.get('/:id', controller.findOne);
   router.post('/', controller.create);
+  router.get('/:id/progress', controller.realtimeProgress);
 
   return router;
 }

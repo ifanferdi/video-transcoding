@@ -1,5 +1,5 @@
-import e from 'express';
 import { ErrorNotFound } from '@/helpers/error.helper';
+import e from 'express';
 
 export default function RouteNotFoundHandler(
   req: e.Request,
