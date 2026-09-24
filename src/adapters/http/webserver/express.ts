@@ -23,19 +23,11 @@ export default function routes(
   app.use(express.urlencoded({ extended: true }));
   app.use(morgan('dev'));
 
-  app.use(
-    cors({
-      origin: config.cors.origins,
-      credentials: true,
-    }),
-  );
+  app.use(cors({ origin: config.cors.origins, credentials: true }));
 
   // API INDEX
   app.get('/', (_req, res) => {
-    res.json({
-      name: config.app.name,
-      version: config.app.version,
-    });
+    res.json({ name: config.app.name, version: config.app.version });
   });
 
   Routes(app, controllers);

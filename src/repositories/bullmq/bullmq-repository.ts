@@ -1,14 +1,5 @@
 import { CreateRedisConnection } from '@/infrastructure/redis/redis-connection';
 import { createBunRedisClient, JobProgress, Processor, Queue, Worker } from 'bullmq';
-import * as os from 'os';
-
-interface SubscribeJobOptions {
-  /**
-   * Jumlah job yang diproses paralel (worker pool).
-   * Default: jumlah CPU - 1, sisakan 1 core untuk API & OS.
-   */
-  concurrency?: number;
-}
 
 export default class BullMqRepository {
   private queues = new Map<string, Queue>();
@@ -22,7 +13,7 @@ export default class BullMqRepository {
     data: T,
     delay = 0 /** miliseconds */,
     removeOnComplete = true,
-    removeOnFail = true,
+    removeOnFail = false,
   ) => {
     const q = this.getQueue(queue);
 
@@ -30,17 +21,14 @@ export default class BullMqRepository {
       delay,
       removeOnComplete,
       removeOnFail,
+      // PRD FR-7 — retry dengan exponential backoff
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5_000 },
     });
   };
 
-  subscribeJob = (
-    queue: string,
-    callback: Processor<any, any, any, JobProgress>,
-    options?: SubscribeJobOptions,
-  ) => {
-    const concurrency = options?.concurrency ?? Math.max(1, os.cpus().length - 1);
-
-    const worker = new Worker(queue, callback, { connection: this.connection, concurrency });
+  subscribeJob = (queue: string, callback: Processor<any, any, any, JobProgress>) => {
+    const worker = new Worker(queue, callback, { connection: this.connection });
     this.workers.push(worker);
 
     return worker;

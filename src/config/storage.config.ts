@@ -17,7 +17,11 @@ export default {
     region: process.env.S3_REGION || 'us-east-1',
     accessKeyId: process.env.S3_ACCESS,
     secretAccessKey: process.env.S3_SECRET,
-    endpoint: process.env.S3_ENDPOINT || 'http://localhost:9001',
+    // endpoint internal — dipakai SDK untuk operasi object (put/get/head/multipart)
+    endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+    // endpoint publik — dipakai saat menandatangani URL agar bisa diakses client dari luar
+    // (di Docker: internal `http://minio:9000`, publik `http://localhost:9000`)
+    publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000',
     forcePathStyle: true,
     bucket: process.env.S3_BUCKET || 'videos',
   },

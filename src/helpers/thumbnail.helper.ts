@@ -46,7 +46,7 @@ export function generateThumbnail(options: ThumbnailOptions): Promise<void> {
         '-q:v 2', // kualitas JPEG (1=terbaik, 31=terburuk)
       ])
       .output(outputPath)
-      .on('start', (cmd) => console.log(`[thumbnail] Command: ${cmd}`))
+      .on('start', (cmd) => console.log(`[thumbnail] Generating thumbnail: ${outputPath}`))
       .on('end', () => {
         console.log(`[thumbnail] Selesai: ${outputPath}`);
         resolve();

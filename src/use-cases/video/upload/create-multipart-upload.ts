@@ -31,7 +31,6 @@ export default class CreateMultipartUpload extends BaseUseCase {
 
     const chunkSize = config.video.multipartChunkSize;
     const totalParts = Math.ceil(fileSize / chunkSize);
-    console.log({ totalParts, fileSize, chunkSize });
 
     const presignPartUrls = await Promise.all(
       Array.from(

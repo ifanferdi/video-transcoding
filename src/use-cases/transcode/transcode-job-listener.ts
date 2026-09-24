@@ -10,6 +10,7 @@ import { ErrorNotFound } from '@/helpers/error.helper';
 import { clampTimestamp, generateThumbnail, getVideoDuration } from '@/helpers/thumbnail.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import * as fs from 'fs';
+import moment from 'moment';
 import * as os from 'os';
 import * as path from 'path';
 import BaseUseCase from '../_base-use-case';
@@ -18,40 +19,53 @@ import { transcodeToHLS } from './trancode-to-hls';
 
 export default class TranscodeJobListener extends BaseUseCase {
   async execute({ id }: TranscodeJobMessage) {
-    const video = await this.repositories.videoRepository.findOne({ id: id });
-    if (!video) return console.error('Video not found.');
+    try {
+      const video = await this.repositories.videoRepository.findOne({ id });
+      if (!video) throw 'Video not found.';
 
-    await this.repositories.videoRepository.update({ id: id, status: VideoStatus.processing });
+      await this.repositories.videoRepository.update({ id: id, status: VideoStatus.processing });
 
-    const sourceKey = video.sourceKey;
-    const outputPrefix = sourceKeyToOutputPrefix(sourceKey);
-    const result = await this.processTranscodeJob(
-      { id, sourceKey, outputPrefix, thumbnailTimestamp: video.thumbnailTimestamp },
-      (status, percent) => {
-        console.log(status, percent);
+      const sourceKey = video.sourceKey;
+      const outputPrefix = sourceKeyToOutputPrefix(sourceKey);
+      const result = await this.processTranscodeJob(
+        { id, sourceKey, outputPrefix, thumbnailTimestamp: video.thumbnailTimestamp },
+        (status, percent) => this.publishProgress(id, status, percent),
+      );
 
-        const payload: ProgressEvent = {
-          id,
-          percent,
-          status,
-          updatedAt: new Date(),
-        };
-        this.repositories.tools.redisRepository.publish(
-          channelName(String(id)),
-          `${JSON.stringify(payload)}\n`,
-        );
-      },
+      await this.repositories.videoRepository.update({
+        id: id,
+        status: VideoStatus.ready,
+        hlsKey: result.masterPlaylistKey,
+        error: null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      await this.repositories.videoRepository.update({
+        id: id,
+        status: VideoStatus.failed,
+        error: message,
+      });
+
+      this.publishProgress(id, TrancodingStatus.FAILED, 0);
+
+      // rethrow → BullMQ menandai job gagal (attempts/backoff menangani retry)
+      throw error;
+    }
+  }
+
+  private publishProgress(id: number, status: TrancodingStatus, percent: number) {
+    const payload: ProgressEvent = {
+      id,
+      percent,
+      status,
+      updatedAt: new Date(),
+    };
+
+    this.repositories.tools.redisRepository.publish(
+      channelName(String(id)),
+      `${JSON.stringify(payload)}\n`,
     );
-
-    await this.repositories.videoRepository.update({
-      id: id,
-      status: VideoStatus.ready,
-      hlsKey: result.masterPlaylistKey,
-    });
-
-    await this.repositories.tools.storageRepository.delete(sourceKey);
-
-    console.log('Job done. Master playlist key: ', result.masterPlaylistKey);
   }
 
   private async processTranscodeJob(
@@ -74,6 +88,8 @@ export default class TranscodeJobListener extends BaseUseCase {
     const thumbnailFileName = 'thumbnail.jpg';
     const thumbnailLocalPath = path.join(workDir, thumbnailFileName);
     const thumbnailKey = path.join(outputPrefix, thumbnailFileName);
+
+    const start = performance.now();
 
     try {
       // ------------------------------------------------------
@@ -151,6 +167,9 @@ export default class TranscodeJobListener extends BaseUseCase {
         fs.rmSync(workDir, { recursive: true, force: true });
       }
       onProgress?.(TrancodingStatus.CLEANING, 100);
+
+      const end = performance.now();
+      console.log(`Transcoding file took ${moment.duration(end - start).humanize()}`);
     }
   }
 }

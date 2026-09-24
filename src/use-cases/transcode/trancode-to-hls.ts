@@ -32,10 +32,13 @@ export async function transcodeToHLS(options: TranscodeOptions): Promise<string>
 
   fs.mkdirSync(outputDir, { recursive: true });
 
+  let index = 0;
   for (const rendition of RENDITION_LADDER) {
-    await transcodeRendition(inputPath, outputDir, rendition, segmentDuration, (percent) =>
+    await transcodeRendition(inputPath, outputDir, rendition, segmentDuration, index, (percent) =>
       onProgress?.(rendition.name, percent),
     );
+
+    index++;
   }
 
   generateMasterPlaylist(outputDir, RENDITION_LADDER);

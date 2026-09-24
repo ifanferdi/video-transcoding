@@ -32,6 +32,7 @@ export enum TrancodingStatus {
   TRANSCODING = 'transcoding',
   UPLOADING = 'uploading',
   CLEANING = 'cleaning',
+  FAILED = 'failed',
 }
 
 export interface JobProgressCallback {
@@ -45,33 +46,33 @@ export interface JobProgressCallback {
  * lebih tinggi dibanding video statis/talking head).
  */
 export const RENDITION_LADDER: RenditionConfig[] = [
-  // {
-  //   name: '1080p',
-  //   width: 1920,
-  //   height: 1080,
-  //   videoBitrate: '5000k',
-  //   audioBitrate: '192k',
-  //   maxrate: '5350k',
-  //   bufsize: '7500k',
-  // },
-  // {
-  //   name: '720p',
-  //   width: 1280,
-  //   height: 720,
-  //   videoBitrate: '2800k',
-  //   audioBitrate: '128k',
-  //   maxrate: '2996k',
-  //   bufsize: '4200k',
-  // },
-  // {
-  //   name: '480p',
-  //   width: 854,
-  //   height: 480,
-  //   videoBitrate: '1400k',
-  //   audioBitrate: '128k',
-  //   maxrate: '1498k',
-  //   bufsize: '2100k',
-  // },
+  {
+    name: '1080p',
+    width: 1920,
+    height: 1080,
+    videoBitrate: '5000k',
+    audioBitrate: '192k',
+    maxrate: '5350k',
+    bufsize: '7500k',
+  },
+  {
+    name: '720p',
+    width: 1280,
+    height: 720,
+    videoBitrate: '2800k',
+    audioBitrate: '128k',
+    maxrate: '2996k',
+    bufsize: '4200k',
+  },
+  {
+    name: '480p',
+    width: 854,
+    height: 480,
+    videoBitrate: '1400k',
+    audioBitrate: '128k',
+    maxrate: '1498k',
+    bufsize: '2100k',
+  },
   {
     name: '360p',
     width: 640,
