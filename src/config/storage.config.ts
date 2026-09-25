@@ -11,7 +11,7 @@ export default {
     multipartThreshold: MULTIPART_THRESHOLD,
     multipartChunkSize: MULTIPART_CHUNK_SIZE,
     multipartMaxSize: SINGLE_MAX_SIZE,
-    minMultipartPartSize: 5 * 1024 * 1024, // S3 min part size (kecuali part terakhir)
+    defaultThumbnailTimestamp: Number(process.env.DEFAULT_THUMBNAIL_TIMESTAMP) || 10,
   },
   s3: {
     region: process.env.S3_REGION || 'us-east-1',
@@ -21,7 +21,8 @@ export default {
     endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
     // endpoint publik — dipakai saat menandatangani URL agar bisa diakses client dari luar
     // (di Docker: internal `http://minio:9000`, publik `http://localhost:9000`)
-    publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000',
+    publicEndpoint:
+      process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000',
     forcePathStyle: true,
     bucket: process.env.S3_BUCKET || 'videos',
   },

@@ -26,7 +26,7 @@ model Video {
   sourceKey          String      @db.VarChar(500)
   hlsKey             String?     @db.VarChar(500)
   fileSize           BigInt?
-  thumbnailTimestamp Int         @default(10)
+  thumbnailTimestamp Int?        @default(10)
   error              String?     @db.Text
   createdAt          DateTime    @default(now()) @db.Timestamptz
   updatedAt          DateTime    @updatedAt @db.Timestamptz

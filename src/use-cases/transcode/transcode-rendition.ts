@@ -1,4 +1,4 @@
-import { RENDITION_LADDER, RenditionConfig } from '@/domain/entities/types/transcode.types';
+import { RenditionConfig } from '@/domain/entities/types/transcode.types';
 
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
@@ -13,7 +13,6 @@ export function transcodeRendition(
   outputDir: string,
   rendition: RenditionConfig,
   segmentDuration: number,
-  renditionSequence: number,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   const renditionDir = path.join(outputDir, rendition.name);
@@ -58,12 +57,7 @@ export function transcodeRendition(
       .on('progress', (progress) => {
         // progress.percent kadang undefined di awal proses, jadi di-guard
         if (progress.percent && onProgress) {
-          onProgress(
-            Math.min(
-              RENDITION_LADDER.length * 100,
-              Math.round(progress.percent) + renditionSequence * 100,
-            ),
-          );
+          onProgress(Math.min(100, Math.round(progress.percent)));
         }
       })
       .on('error', (err) => {

@@ -1,13 +1,18 @@
 import config from '@/config/storage.config';
+import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import BaseUseCase from '@/use-cases/_base-use-case';
 import { CreateMultipartDto, validateVideoExtension } from '@/validations/video-validation';
 import { randomUUID } from 'crypto';
 /**
  * Fase 5 — Multipart upload init untuk file besar.
- * Flow: create video record + createMultipartUpload → uploadId.
+ * Flow: create video record + GenerateMultipartPresignUrl → uploadId.
  * Client minta presigned URL per-part via /parts/presign, lalu complete.
  */
-export default class CreateMultipartUpload extends BaseUseCase {
+export default class GenerateMultipartPresignUrl extends BaseUseCase {
+  private get redisRepository() {
+    return this.repositories.tools.redisRepository;
+  }
+
   async execute(body: CreateMultipartDto) {
     const { filename: title, fileSize, contentType } = body;
     const ext = validateVideoExtension(title);
@@ -20,14 +25,11 @@ export default class CreateMultipartUpload extends BaseUseCase {
     );
 
     // simpan uploadId → key mapping di Redis (TTL 24 jam)
-    const redisRepository = this.redisRepository;
-    if (redisRepository) {
-      await redisRepository.set(
-        `multipart:${uploadId}`,
-        { uploadId, key: sourceKey },
-        60 * 60 * 24,
-      );
-    }
+    await this.redisRepository.set(
+      `multipart:${uploadId}`,
+      { uploadId, key: sourceKey },
+      60 * 60 * 24,
+    );
 
     const chunkSize = config.video.multipartChunkSize;
     const totalParts = Math.ceil(fileSize / chunkSize);
@@ -44,18 +46,22 @@ export default class CreateMultipartUpload extends BaseUseCase {
       ),
     );
 
-    return {
-      key: sourceKey,
-      uploadId,
-      chunkSize,
-      totalParts,
-      expiresIn: config.expiredTime,
-      presignPartUrls,
-    };
-  }
+    const video = await this.repositories.videoRepository.store({
+      title,
+      sourceKey,
+      status: VideoStatus.uploading,
+    });
 
-  private get redisRepository() {
-    // Redis opsional di fase awal; fallback: client kirim key saat complete
-    return this.repositories.tools.redisRepository;
+    return {
+      ...video,
+      upload: {
+        key: sourceKey,
+        uploadId,
+        chunkSize,
+        totalParts,
+        expiresIn: config.expiredTime,
+        presignPartUrls,
+      },
+    };
   }
 }

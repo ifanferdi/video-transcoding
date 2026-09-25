@@ -1,23 +1,21 @@
 import TranscodeJobListener from '@/use-cases/transcode/transcode-job-listener';
-import CreateVideo from '@/use-cases/video/create-video';
 import FindAllVideo from '@/use-cases/video/find-all-video';
 import FindByIdVideo from '@/use-cases/video/find-by-id-video';
 import RealtimeProgressVideo from '@/use-cases/video/realtime-progress-video';
 import CompleteMultipartUpload from '@/use-cases/video/upload/complete-multipart-upload';
-import CreateMultipartUpload from '@/use-cases/video/upload/create-multipart-upload';
+import CompleteUpload from '@/use-cases/video/upload/complete-upload';
+import GenerateMultipartPresignUrl from '@/use-cases/video/upload/generate-multipart-presign-url';
 import GeneratePresignUrl from '@/use-cases/video/upload/generate-presign-url';
 import PresignPartUrl from '@/use-cases/video/upload/presign-part-url';
-import UploadComplete from '@/use-cases/video/upload/upload-complete';
 
 export interface VideoUseCases {
   findAllVideo: FindAllVideo;
   findByIdVideo: FindByIdVideo;
-  createVideo: CreateVideo;
   generatePresignUrl: GeneratePresignUrl;
-  createMultipartUpload: CreateMultipartUpload;
+  GenerateMultipartPresignUrl: GenerateMultipartPresignUrl;
   presignPartUrl: PresignPartUrl;
   completeMultipartUpload: CompleteMultipartUpload;
-  uploadComplete: UploadComplete;
+  CompleteUpload: CompleteUpload;
   realtimeProgressVideo: RealtimeProgressVideo;
 }
 

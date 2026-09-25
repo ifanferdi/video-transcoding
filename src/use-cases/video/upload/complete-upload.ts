@@ -11,7 +11,7 @@ export interface TranscodeJobMessage {
  * Flow: verifikasi source sudah ada di storage → update status queued → publish ke RabbitMQ.
  * Worker Golang consume queue `transcode.jobs` dan mulai FFmpeg.
  */
-export default class UploadComplete extends BaseUseCase {
+export default class CompleteUpload extends BaseUseCase {
   async execute(id: number, body: TriggerTranscodeDto = {}) {
     const video = await this.repositories.videoRepository.findOne({ id });
     if (!video) throw new ErrorNotFound('Video not found.');

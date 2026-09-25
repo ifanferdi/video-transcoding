@@ -7,15 +7,14 @@ import RedisConnection from '@/infrastructure/redis/redis-connection';
 import BullMqRepository from '@/repositories/bullmq/bullmq-repository';
 import { Express } from 'express';
 import TranscodeJobListener from './use-cases/transcode/transcode-job-listener';
-import CreateVideo from './use-cases/video/create-video';
 import FindAllVideo from './use-cases/video/find-all-video';
 import FindByIdVideo from './use-cases/video/find-by-id-video';
 import RealtimeProgressVideo from './use-cases/video/realtime-progress-video';
 import CompleteMultipartUpload from './use-cases/video/upload/complete-multipart-upload';
-import CreateMultipartUpload from './use-cases/video/upload/create-multipart-upload';
+import CompleteUpload from './use-cases/video/upload/complete-upload';
+import GenerateMultipartPresignUrl from './use-cases/video/upload/generate-multipart-presign-url';
 import GeneratePresignUrl from './use-cases/video/upload/generate-presign-url';
 import PresignPartUrl from './use-cases/video/upload/presign-part-url';
-import UploadComplete from './use-cases/video/upload/upload-complete';
 
 export default async function bootstrap(app: Express) {
   const useCases = await setupUseCases();
@@ -40,12 +39,11 @@ async function setupUseCases(): Promise<UseCases> {
     videoUseCase: {
       findAllVideo: new FindAllVideo(redisClient),
       findByIdVideo: new FindByIdVideo(redisClient),
-      createVideo: new CreateVideo(redisClient),
       generatePresignUrl: new GeneratePresignUrl(redisClient),
-      createMultipartUpload: new CreateMultipartUpload(redisClient),
+      GenerateMultipartPresignUrl: new GenerateMultipartPresignUrl(redisClient),
       presignPartUrl: new PresignPartUrl(redisClient),
       completeMultipartUpload: new CompleteMultipartUpload(redisClient),
-      uploadComplete: new UploadComplete(redisClient),
+      CompleteUpload: new CompleteUpload(redisClient),
       realtimeProgressVideo: new RealtimeProgressVideo(redisClient),
     },
     transcodeUseCase: { transcodeJobListener: new TranscodeJobListener(redisClient) },

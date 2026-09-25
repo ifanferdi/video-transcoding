@@ -22,7 +22,7 @@ export const CreateVideoSchema = z.object({
   title: StringSchema.min(1).max(255),
   sourceKey: StringSchema.min(1).max(500),
   fileSize: NumberSchema.int().positive().nullable().optional(),
-  thumbnailTimestamp: NumberSchema.max(500),
+  thumbnailTimestamp: NumberSchema.max(500).optional(),
   status: z.nativeEnum(VideoStatus).optional(),
 });
 
@@ -41,7 +41,7 @@ export const PresignUploadSchema = z.object({
 });
 
 export const CreateMultipartSchema = PresignUploadSchema.extend({
-  fileSize: NumberSchema.max(config.storage.video.multipartMaxSize).int().positive(),
+  fileSize: NumberSchema.max(config.storage.video.multipartThreshold).int().positive(),
 });
 export const PresignPartSchema = z.object({
   uploadId: StringSchema.min(1),

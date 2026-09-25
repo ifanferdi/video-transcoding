@@ -3,7 +3,6 @@ import { BaseFindById } from '@/validations/base-validation';
 import {
   CompleteMultipartSchema,
   CreateMultipartSchema,
-  CreateVideoSchema,
   FindAllVideoSchema,
   FindByIdVideoSchema,
   PresignPartSchema,
@@ -36,16 +35,6 @@ export default class VideoController extends BaseController {
   });
 
   /**
-   * POST /api/v1/videos — create video record manual
-   */
-  create = asyncHandler(async (req: e.Request, res: e.Response) => {
-    const body = CreateVideoSchema.parse(req.body);
-    const video = await this.useCases.videoUseCase.createVideo.execute(body);
-
-    res.status(201).json(video);
-  });
-
-  /**
    * Fase 1 — POST /api/v1/videos/presign
    * Generate presigned PUT URL (single upload, file kecil).
    */
@@ -63,7 +52,7 @@ export default class VideoController extends BaseController {
   createMultipart = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = CreateMultipartSchema.parse(req.body);
 
-    const result = await this.useCases.videoUseCase.createMultipartUpload.execute(body);
+    const result = await this.useCases.videoUseCase.GenerateMultipartPresignUrl.execute(body);
 
     res.status(201).json(result);
   });
@@ -100,9 +89,9 @@ export default class VideoController extends BaseController {
    * Fase 1 — POST /api/v1/videos/:id/transcode
    * "Complete upload" → verifikasi file ada → enqueue job transcoding.
    */
-  uploadComplete = asyncHandler(async (req: e.Request, res: e.Response) => {
+  CompleteUpload = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = TriggerTranscodeSchema.parse(req.body || {});
-    const result = await this.useCases.videoUseCase.uploadComplete.execute(
+    const result = await this.useCases.videoUseCase.CompleteUpload.execute(
       Number(req.params.id),
       body,
     );

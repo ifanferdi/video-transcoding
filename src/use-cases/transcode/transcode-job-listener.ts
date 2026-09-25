@@ -1,3 +1,4 @@
+import config from '@/config/config';
 import { ProgressEvent } from '@/domain/entities/models/video';
 import {
   JobProgressCallback,
@@ -14,8 +15,10 @@ import moment from 'moment';
 import * as os from 'os';
 import * as path from 'path';
 import BaseUseCase from '../_base-use-case';
-import { TranscodeJobMessage } from '../video/upload/upload-complete';
+import { TranscodeJobMessage } from '../video/upload/complete-upload';
 import { transcodeToHLS } from './trancode-to-hls';
+
+const DEFAULT_THUMBNAIL_TIMESTAMP = config.storage.video.defaultThumbnailTimestamp;
 
 export default class TranscodeJobListener extends BaseUseCase {
   async execute({ id }: TranscodeJobMessage) {
@@ -27,8 +30,9 @@ export default class TranscodeJobListener extends BaseUseCase {
 
       const sourceKey = video.sourceKey;
       const outputPrefix = sourceKeyToOutputPrefix(sourceKey);
+      const thumbnailTimestamp = video.thumbnailTimestamp ?? DEFAULT_THUMBNAIL_TIMESTAMP;
       const result = await this.processTranscodeJob(
-        { id, sourceKey, outputPrefix, thumbnailTimestamp: video.thumbnailTimestamp },
+        { id, sourceKey, outputPrefix, thumbnailTimestamp },
         (status, percent) => this.publishProgress(id, status, percent),
       );
 
