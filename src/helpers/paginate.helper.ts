@@ -1,16 +1,14 @@
-export function paginate(page: number | undefined, limit: number | undefined) {
-  const currentPage = Number(page) || 1;
-  const perPage = Number(limit) || 10;
-  const offset = (currentPage - 1) * perPage;
-
-  return { page: currentPage, limit: perPage, offset };
-}
-
-export function buildMeta(total: number, page: number, limit: number) {
-  return {
+export const paginate = (
+  data: Record<string, any>,
+  total: number,
+  page: number = 1,
+  limit: number = 10,
+) => ({
+  data,
+  meta: {
     page,
-    limit,
+    limit: limit === -1 ? total || 1 : limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
-  };
-}
+  },
+});

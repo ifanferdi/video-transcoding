@@ -10,3 +10,5 @@
 AGENTS.md
 PRD.md
 /sql/
+/test-results/
+/playwright-report/

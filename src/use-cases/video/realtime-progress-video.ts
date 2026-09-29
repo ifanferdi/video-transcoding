@@ -38,10 +38,7 @@ export default class RealtimeProgressVideo extends BaseUseCase {
         logRealtime.set(event.status, { status: event.status, percent: event.percent });
       }
 
-      if (
-        event.status === TrancodingStatus.FAILED ||
-        (event.status === TrancodingStatus.CLEANING && event.percent >= 100)
-      ) {
+      if (event.status === TrancodingStatus.FINISHING && event.percent >= 100) {
         cleanup();
         res.end();
       }

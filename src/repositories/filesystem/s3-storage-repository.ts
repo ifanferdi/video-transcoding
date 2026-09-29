@@ -22,10 +22,12 @@ import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
 const BUCKET_NAME = config.s3.bucket;
-const { region, accessKeyId, secretAccessKey, endpoint, forcePathStyle } = config.s3;
+const { region, accessKeyId, secretAccessKey, endpoint, publicEndpoint, forcePathStyle } =
+  config.s3;
 
 export default class S3StorageRepository {
   private s3Client?: S3Client;
+  private s3PublicClient?: S3Client;
 
   private getClient() {
     if (!this.s3Client) {
@@ -42,6 +44,23 @@ export default class S3StorageRepository {
     }
 
     return this.s3Client;
+  }
+
+  private getPublicClient() {
+    if (!this.s3PublicClient) {
+      this.s3PublicClient = new S3Client({
+        forcePathStyle,
+        region,
+        credentials: {
+          accessKeyId: accessKeyId || 'minioadmin',
+          secretAccessKey: secretAccessKey || 'minioadmin',
+        },
+        endpoint: publicEndpoint || endpoint,
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+      });
+    }
+
+    return this.s3PublicClient;
   }
 
   async upload(file: Buffer, Key: string) {
@@ -75,7 +94,7 @@ export default class S3StorageRepository {
   async getUrl(path: string, expiresIn = config.expiredTime) {
     const options: GetObjectCommandInput = { Bucket: BUCKET_NAME, Key: path };
 
-    return await getSignedUrl(this.getClient(), new GetObjectCommand(options), {
+    return await getSignedUrl(this.getPublicClient(), new GetObjectCommand(options), {
       expiresIn /** seconds */,
     });
   }
@@ -87,7 +106,7 @@ export default class S3StorageRepository {
       ContentType: mime.contentType(path.basename(Key)) || undefined,
     };
 
-    return await getSignedUrl(this.getClient(), new PutObjectCommand(command), {
+    return await getSignedUrl(this.getPublicClient(), new PutObjectCommand(command), {
       expiresIn /** seconds */,
     });
   }
@@ -121,7 +140,7 @@ export default class S3StorageRepository {
       PartNumber: partNumber,
     });
 
-    return await getSignedUrl(this.getClient(), command, { expiresIn });
+    return await getSignedUrl(this.getPublicClient(), command, { expiresIn });
   }
 
   async completeMultipartUpload(
@@ -184,28 +203,5 @@ export default class S3StorageRepository {
     // result.Body dari AWS SDK v3 adalah Node.js Readable stream
     // (di environment Node; beda tipe kalau di browser/edge)
     await finished((result.Body as Readable).pipe(writeStream));
-  }
-
-  /**
-   * Upload seluruh isi folder (rekursif) ke S3 dengan prefix tertentu.
-   * Dipakai untuk upload hasil transcoding: folder lokal berisi
-   * master.m3u8 + subfolder per rendition (1080p/, 720p/, dst)
-   * di-mirror strukturnya persis ke S3 key prefix.
-   */
-  async uploadDirectory(localDir: string, keyPrefix: string): Promise<void> {
-    const entries = fs.readdirSync(localDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const localPath = path.join(localDir, entry.name);
-      const key = `${keyPrefix}/${entry.name}`;
-
-      if (entry.isDirectory()) {
-        // rekursif untuk subfolder rendition (1080p/, 720p/, dst)
-        await this.uploadDirectory(localPath, key);
-      } else {
-        const fileBuffer = fs.readFileSync(localPath);
-        await this.upload(fileBuffer, key);
-      }
-    }
   }
 }

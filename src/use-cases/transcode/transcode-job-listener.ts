@@ -16,7 +16,7 @@ import * as os from 'os';
 import * as path from 'path';
 import BaseUseCase from '../_base-use-case';
 import { TranscodeJobMessage } from '../video/upload/complete-upload';
-import { transcodeToHLS } from './trancode-to-hls';
+import { transcodeToHLS } from './_trancode-to-hls';
 
 const DEFAULT_THUMBNAIL_TIMESTAMP = config.storage.video.defaultThumbnailTimestamp;
 
@@ -40,6 +40,7 @@ export default class TranscodeJobListener extends BaseUseCase {
         id: id,
         status: VideoStatus.ready,
         hlsKey: result.masterPlaylistKey,
+        thumbnailKey: result.thumbnailKey,
         error: null,
       });
     } catch (error) {
@@ -50,8 +51,6 @@ export default class TranscodeJobListener extends BaseUseCase {
         status: VideoStatus.failed,
         error: message,
       });
-
-      this.publishProgress(id, TrancodingStatus.FAILED, 0);
 
       // rethrow → BullMQ menandai job gagal (attempts/backoff menangani retry)
       throw error;
@@ -102,20 +101,15 @@ export default class TranscodeJobListener extends BaseUseCase {
       const isExist = await this.repositories.tools.storageRepository.isExist(sourceKey);
       if (!isExist) throw new ErrorNotFound('Source file not found in storage.');
 
-      onProgress?.(TrancodingStatus.DOWNLOADING, 0);
+      onProgress?.(TrancodingStatus.PREPARING, 0);
       await this.repositories.tools.storageRepository.downloadFile(sourceKey, sourceLocalPath);
-      onProgress?.(TrancodingStatus.DOWNLOADING, 100);
+      onProgress?.(TrancodingStatus.PREPARING, 100);
 
       // ------------------------------------------------------
       // STEP 2: Generate thumbnail
       // ------------------------------------------------------
-      onProgress?.(TrancodingStatus.THUMBNAIL, 0);
+      onProgress?.(TrancodingStatus.PROCESSING, 0);
 
-      // Validasi timestamp yang diminta client terhadap durasi video asli.
-      // Client bisa saja kirim detik yang melebihi durasi video (bug UI,
-      // atau video ternyata lebih pendek dari yang dikira client saat
-      // request dibuat) — clamp supaya FFmpeg tidak gagal karena seek
-      // ke posisi yang tidak ada.
       const duration = await getVideoDuration(sourceLocalPath);
       const safeTimestamp = clampTimestamp(thumbnailTimestamp, duration);
 
@@ -124,14 +118,14 @@ export default class TranscodeJobListener extends BaseUseCase {
         outputPath: thumbnailLocalPath,
         timestampSeconds: safeTimestamp,
       });
-      onProgress?.(TrancodingStatus.THUMBNAIL, 100);
+      const thumbnailProgressNum = 5;
+      onProgress?.(TrancodingStatus.PROCESSING, thumbnailProgressNum);
 
       // ------------------------------------------------------
       // STEP 3: Transcode ke multi-rendition HLS
       // ------------------------------------------------------
       const renditionCount = RENDITION_LADDER.length;
       const renditionProgress: Record<string, number> = {};
-      onProgress?.(TrancodingStatus.TRANSCODING, 0);
 
       await transcodeToHLS({
         inputPath: sourceLocalPath,
@@ -140,40 +134,73 @@ export default class TranscodeJobListener extends BaseUseCase {
           renditionProgress[rendition] = percent;
 
           const totalPercent =
-            Object.values(renditionProgress).reduce((a, b) => a + b, 0) / renditionCount;
-          onProgress?.(TrancodingStatus.TRANSCODING, totalPercent);
+            Object.values(renditionProgress).reduce((a, b) => a + b, thumbnailProgressNum) /
+            renditionCount;
+          onProgress?.(TrancodingStatus.PROCESSING, totalPercent);
         },
       });
 
       // ------------------------------------------------------
       // STEP 4: Upload hasil transcoding ke S3
       // ------------------------------------------------------
-      onProgress?.(TrancodingStatus.UPLOADING, 0);
+      onProgress?.(TrancodingStatus.FINISHING, 0);
+
+      const files = this.collectFiles(outputLocalDir, outputPrefix);
+
+      // thumbnail upload
       await this.repositories.tools.storageRepository.upload(
         fs.readFileSync(thumbnailLocalPath),
         thumbnailKey,
       );
-      await this.repositories.tools.storageRepository.uploadDirectory(outputLocalDir, outputPrefix);
-      onProgress?.(TrancodingStatus.UPLOADING, 100);
+
+      // .ts files upload
+      for (let i = 0; i < files.length; i++) {
+        const { localPath, key } = files[i];
+        const fileBuffer = fs.readFileSync(localPath);
+        await this.repositories.tools.storageRepository.upload(fileBuffer, key);
+        onProgress?.(TrancodingStatus.FINISHING, Math.round(((i + 1) / files.length) * 100));
+      }
 
       // ------------------------------------------------------
-      // STEP 6 (opsional): Hapus source asli di S3
+      // STEP 5 (opsional): Hapus source asli di S3
       // ------------------------------------------------------
       if (deleteSourceAfterDone) await this.repositories.tools.storageRepository.delete(sourceKey);
 
-      return { masterPlaylistKey: `${outputPrefix}/master.m3u8`, thumbnailKey };
+      return {
+        masterPlaylistKey: `${outputPrefix}/master.m3u8`,
+        thumbnailKey: `${outputPrefix}/${thumbnailFileName}`,
+      };
     } finally {
       // ------------------------------------------------------
-      // STEP 5: Cleanup file temp lokal (selalu, apapun hasilnya)
+      // STEP 6: Cleanup file temp lokal (selalu, apapun hasilnya)
       // ------------------------------------------------------
-      onProgress?.(TrancodingStatus.CLEANING, 0);
       if (fs.existsSync(workDir)) {
         fs.rmSync(workDir, { recursive: true, force: true });
       }
-      onProgress?.(TrancodingStatus.CLEANING, 100);
 
       const end = performance.now();
       console.log(`Transcoding file took ${moment.duration(end - start).humanize()}`);
     }
+  }
+
+  private collectFiles(
+    localDir: string,
+    keyPrefix: string,
+  ): Array<{ localPath: string; key: string }> {
+    const result: Array<{ localPath: string; key: string }> = [];
+    const entries = fs.readdirSync(localDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const localPath = path.join(localDir, entry.name);
+      const key = `${keyPrefix}/${entry.name}`;
+
+      if (entry.isDirectory()) {
+        result.push(...this.collectFiles(localPath, key));
+      } else {
+        result.push({ localPath, key });
+      }
+    }
+
+    return result;
   }
 }

@@ -17,7 +17,8 @@
     "db:seed": "bunx prisma db seed",
     "db:fresh:seed": "bun run db:fresh && bun run db:seed",
     "db:deploy": "bun run prisma && bunx prisma migrate deploy",
-    "db:studio": "bunx prisma studio"
+    "db:studio": "bunx prisma studio",
+    "test:e2e": "playwright test"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +48,7 @@
     "zod": "^3.21.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/amqplib": "^0.10.7",
     "@types/bun": "^1.2.23",
     "@types/cors": "^2.8.19",

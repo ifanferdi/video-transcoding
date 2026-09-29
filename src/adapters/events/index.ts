@@ -8,8 +8,9 @@ export default class QueueWorker {
   ) {}
 
   listenTranscodingQueue() {
-    this.bullMqRepository.subscribeJob('transcode.jobs', async ({ data }) => {
-      this.useCases.transcodeUseCase.transcodeJobListener.execute(data);
-    });
+    this.bullMqRepository.subscribeJob(
+      'transcode.jobs',
+      async ({ data }) => await this.useCases.transcodeUseCase.transcodeJobListener.execute(data),
+    );
   }
 }

@@ -30,6 +30,7 @@ export const UpdateVideoSchema = z.object({
   id: NumberSchema,
   status: z.nativeEnum(VideoStatus),
   hlsKey: StringSchema.max(500).optional(),
+  thumbnailKey: StringSchema.max(500).optional(),
   error: StringSchema.optional().nullable(),
 });
 

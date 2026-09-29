@@ -44,8 +44,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - '9000:9000' # S3 API
-      - '9002:9002' # console UI
+      - '9001:9000' # S3 API
+      - '9003:9002' # console UI
     volumes:
       - minio_data:/data
     networks:
@@ -100,6 +100,7 @@ services:
       S3_SECRET: minioadmin
       # Endpoint internal container (bukan localhost — diakses dari dalam network)
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9001
       S3_BUCKET: video-transcoding
       UPLOAD_SINGLE_MAX_SIZE: 1073741824
       UPLOAD_MULTIPART_THRESHOLD: 104857600

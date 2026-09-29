@@ -1,5 +1,10 @@
+import { Video } from '@/infrastructure/database/prisma/generated/client';
 import { VideoScalarFieldEnum } from '@/infrastructure/database/prisma/generated/internal/prismaNamespace';
 import { TrancodingStatus } from '../types/transcode.types';
+
+export interface ResponseVideo extends Video {
+  playback?: { masterUrl?: string; thumbnailUrl?: string; expiresIn?: Date };
+}
 
 export interface ProgressEvent {
   id: number;

@@ -25,6 +25,7 @@ model Video {
   status             VideoStatus @default(uploading)
   sourceKey          String      @db.VarChar(500)
   hlsKey             String?     @db.VarChar(500)
+  thumbnailKey       String?     @db.VarChar(500)
   fileSize           BigInt?
   thumbnailTimestamp Int?        @default(10)
   error              String?     @db.Text

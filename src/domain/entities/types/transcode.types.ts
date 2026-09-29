@@ -27,12 +27,9 @@ export interface TranscodeJobPayload {
 }
 
 export enum TrancodingStatus {
-  DOWNLOADING = 'downloading',
-  THUMBNAIL = 'thumbnail',
-  TRANSCODING = 'transcoding',
-  UPLOADING = 'uploading',
-  CLEANING = 'cleaning',
-  FAILED = 'failed',
+  PREPARING = 'preparing',
+  PROCESSING = 'processing',
+  FINISHING = 'finishing',
 }
 
 export interface JobProgressCallback {
