@@ -37,7 +37,10 @@ export default function routes(
   serverAdapter.setBasePath('/admin/queues');
 
   createBullBoard({
-    queues: [new BullMQAdapter(bullMqRepository.getQueue('transcode.jobs')!)],
+    queues: [
+      new BullMQAdapter(bullMqRepository.getQueue('transcode.jobs')!),
+      new BullMQAdapter(bullMqRepository.getQueue('delete.jobs')!),
+    ],
     serverAdapter,
   });
 

@@ -99,6 +99,16 @@ export default class VideoController extends BaseController {
     res.status(202).json(result);
   });
 
+  /**
+   * DELETE /api/v1/videos/:id — hapus video + object S3 (async via queue).
+   */
+  deleteVideo = asyncHandler(async (req: e.Request, res: e.Response) => {
+    const { id } = BaseFindById.parse({ id: req.params.id });
+    const result = await this.useCases.videoUseCase.deleteVideo.execute(id);
+
+    res.status(202).json(result);
+  });
+
   realtimeProgress = asyncHandler(async (req: e.Request, res: e.Response) => {
     // ------------------------------------------------------
     // 1. Setup response header untuk SSE

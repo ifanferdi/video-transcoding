@@ -11,6 +11,7 @@ export interface ProgressEvent {
   status: TrancodingStatus;
   percent: number;
   updatedAt: Date;
+  meta?: { thumbnailUrl: string };
 }
 
 export const VIDEO_FIELD = VideoScalarFieldEnum;

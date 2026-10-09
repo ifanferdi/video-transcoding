@@ -33,7 +33,7 @@ export default class TranscodeJobListener extends BaseUseCase {
       const thumbnailTimestamp = video.thumbnailTimestamp ?? DEFAULT_THUMBNAIL_TIMESTAMP;
       const result = await this.processTranscodeJob(
         { id, sourceKey, outputPrefix, thumbnailTimestamp },
-        (status, percent) => this.publishProgress(id, status, percent),
+        (status, percent, thumbnailKey) => this.publishProgress(id, status, percent, thumbnailKey),
       );
 
       await this.repositories.videoRepository.update({
@@ -57,13 +57,22 @@ export default class TranscodeJobListener extends BaseUseCase {
     }
   }
 
-  private publishProgress(id: number, status: TrancodingStatus, percent: number) {
+  private async publishProgress(
+    id: number,
+    status: TrancodingStatus,
+    percent: number,
+    thumbnailPath?: string,
+  ) {
     const payload: ProgressEvent = {
       id,
       percent,
       status,
       updatedAt: new Date(),
     };
+    if (thumbnailPath)
+      payload.meta = {
+        thumbnailUrl: await this.repositories.tools.storageRepository.getUrl(thumbnailPath),
+      };
 
     this.repositories.tools.redisRepository.publish(
       channelName(String(id)),
@@ -106,7 +115,7 @@ export default class TranscodeJobListener extends BaseUseCase {
       onProgress?.(TrancodingStatus.PREPARING, 100);
 
       // ------------------------------------------------------
-      // STEP 2: Generate thumbnail
+      // STEP 2: Generate & upload thumbnail
       // ------------------------------------------------------
       onProgress?.(TrancodingStatus.PROCESSING, 0);
 
@@ -118,8 +127,15 @@ export default class TranscodeJobListener extends BaseUseCase {
         outputPath: thumbnailLocalPath,
         timestampSeconds: safeTimestamp,
       });
+
+      // thumbnail upload
+      await this.repositories.tools.storageRepository.upload(
+        fs.readFileSync(thumbnailLocalPath),
+        thumbnailKey,
+      );
+
       const thumbnailProgressNum = 5;
-      onProgress?.(TrancodingStatus.PROCESSING, thumbnailProgressNum);
+      onProgress?.(TrancodingStatus.PROCESSING, thumbnailProgressNum, thumbnailKey);
 
       // ------------------------------------------------------
       // STEP 3: Transcode ke multi-rendition HLS
@@ -146,12 +162,6 @@ export default class TranscodeJobListener extends BaseUseCase {
       onProgress?.(TrancodingStatus.FINISHING, 0);
 
       const files = this.collectFiles(outputLocalDir, outputPrefix);
-
-      // thumbnail upload
-      await this.repositories.tools.storageRepository.upload(
-        fs.readFileSync(thumbnailLocalPath),
-        thumbnailKey,
-      );
 
       // .ts files upload
       for (let i = 0; i < files.length; i++) {

@@ -33,7 +33,7 @@ export enum TrancodingStatus {
 }
 
 export interface JobProgressCallback {
-  (status: TrancodingStatus, percent: number): void;
+  (status: TrancodingStatus, percent: number, thumbnailPath?: string): void;
 }
 
 /**

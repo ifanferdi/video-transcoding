@@ -5,9 +5,11 @@ import {
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   GetObjectCommandInput,
   HeadObjectCommand,
+  ListObjectsV2Command,
   ListPartsCommand,
   PutObjectCommand,
   PutObjectCommandInput,
@@ -82,6 +84,46 @@ export default class S3StorageRepository {
     }
   }
 
+  /**
+   * Hapus semua object di bawah `prefix` (mis. seluruh segment HLS satu video).
+   * Error dilempar (tidak ditelan) supaya pemanggil — worker queue — bisa retry.
+   */
+  async deletePrefix(prefix: string): Promise<number> {
+    const client = this.getClient();
+    let deleted = 0;
+    let continuationToken: string | undefined;
+
+    do {
+      const list = await client.send(
+        new ListObjectsV2Command({
+          Bucket: BUCKET_NAME,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+
+      // ListObjectsV2 max 1000 key per halaman → DeleteObjects aman dalam 1 batch.
+      const objects = (list.Contents ?? [])
+        .map((item) => item.Key)
+        .filter((key): key is string => Boolean(key))
+        .map((Key) => ({ Key }));
+
+      if (objects.length) {
+        await client.send(
+          new DeleteObjectsCommand({
+            Bucket: BUCKET_NAME,
+            Delete: { Objects: objects, Quiet: true },
+          }),
+        );
+        deleted += objects.length;
+      }
+
+      continuationToken = list.IsTruncated ? list.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    return deleted;
+  }
+
   async isExist(path: string) {
     try {
       await this.getClient().send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: path }));
@@ -99,11 +141,12 @@ export default class S3StorageRepository {
     });
   }
 
-  async getPresignUrl(Key: string, size: number, expiresIn = config.expiredTime) {
+  async getPresignUrl(key: string, size: number, expiresIn = config.expiredTime) {
     const command: PutObjectCommandInput = {
       Bucket: BUCKET_NAME,
-      Key,
-      ContentType: mime.contentType(path.basename(Key)) || undefined,
+      Key: key,
+      ContentType: mime.contentType(path.basename(key)) || undefined,
+      ContentLength: size,
     };
 
     return await getSignedUrl(this.getPublicClient(), new PutObjectCommand(command), {

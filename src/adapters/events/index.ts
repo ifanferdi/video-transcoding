@@ -13,4 +13,11 @@ export default class QueueWorker {
       async ({ data }) => await this.useCases.transcodeUseCase.transcodeJobListener.execute(data),
     );
   }
+
+  listenDeleteQueue() {
+    this.bullMqRepository.subscribeJob(
+      'delete.jobs',
+      async ({ data }) => await this.useCases.deleteUseCase.deleteVideoJobListener.execute(data),
+    );
+  }
 }

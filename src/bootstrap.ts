@@ -6,7 +6,9 @@ import { UseCases } from '@/domain/use-cases/use-case.interface';
 import RedisConnection from '@/infrastructure/redis/redis-connection';
 import BullMqRepository from '@/repositories/bullmq/bullmq-repository';
 import { Express } from 'express';
+import DeleteVideoJobListener from './use-cases/delete/delete-video-job-listener';
 import TranscodeJobListener from './use-cases/transcode/transcode-job-listener';
+import DeleteVideo from './use-cases/video/delete-video';
 import FindAllVideo from './use-cases/video/find-all-video';
 import FindByIdVideo from './use-cases/video/find-by-id-video';
 import RealtimeProgressVideo from './use-cases/video/realtime-progress-video';
@@ -23,6 +25,7 @@ export default async function bootstrap(app: Express) {
   const bullMqRepository = new BullMqRepository();
   const worker = new QueueWorker(useCases, bullMqRepository);
   worker.listenTranscodingQueue();
+  worker.listenDeleteQueue();
 
   express(app, controllers, useCases, bullMqRepository);
 
@@ -45,8 +48,10 @@ async function setupUseCases(): Promise<UseCases> {
       completeMultipartUpload: new CompleteMultipartUpload(redisClient),
       CompleteUpload: new CompleteUpload(redisClient),
       realtimeProgressVideo: new RealtimeProgressVideo(redisClient),
+      deleteVideo: new DeleteVideo(redisClient),
     },
     transcodeUseCase: { transcodeJobListener: new TranscodeJobListener(redisClient) },
+    deleteUseCase: { deleteVideoJobListener: new DeleteVideoJobListener(redisClient) },
   };
 }
 
