@@ -12,3 +12,5 @@ PRD.md
 /sql/
 /test-results/
 /playwright-report/
+docs/*.md
+.idea

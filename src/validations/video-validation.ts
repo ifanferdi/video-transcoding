@@ -28,7 +28,7 @@ export const CreateVideoSchema = z.object({
 
 export const UpdateVideoSchema = z.object({
   id: NumberSchema,
-  status: z.nativeEnum(VideoStatus),
+  status: z.nativeEnum(VideoStatus).default(VideoStatus.queued).optional(),
   hlsKey: StringSchema.max(500).optional(),
   thumbnailKey: StringSchema.max(500).optional(),
   error: StringSchema.optional().nullable(),

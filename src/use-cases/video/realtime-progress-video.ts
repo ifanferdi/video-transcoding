@@ -1,56 +1,36 @@
 import config from '@/config/config';
 import { ProgressEvent } from '@/domain/entities/models/video';
-import { TrancodingStatus } from '@/domain/entities/types/transcode.types';
-import { channelName } from '@/helpers/common.helper';
+import progressHub from '@/infrastructure/redis/progress-hub';
+import sseRegistry from '@/infrastructure/sse/sse-registry';
 import BaseUseCase from '@/use-cases/_base-use-case';
 import e from 'express';
 
-const SNAPSHOT_KEY = config.redis.snapshotKey;
+const PROGRESS_ACTIVE_KEY = config.redis.progressActiveKey;
+const HEARTBEAT_MS = 30_000;
 
-interface logRealtimeValue {
-  status: TrancodingStatus;
-  percent: number;
-}
+/**
+ * Stream progres semua transcode yang sedang berjalan.
+ * Koneksi bersifat general (tanpa id) dan tidak ditutup server;
+ * client menerima snapshot job aktif saat connect, lalu event live.
+ */
 export default class RealtimeProgressVideo extends BaseUseCase {
-  async execute({ res, id }: { res: e.Response; id: number }) {
-    const sendEvent = (event: string) => res.write(`data: ${event}`);
+  async execute({ res }: { res: e.Response }) {
+    const send = (event: ProgressEvent | string) =>
+      res.write(`data: ${typeof event === 'string' ? event : JSON.stringify(event)}\n\n`);
 
-    const subscriber = await this.redisClient.duplicate();
-    const channel = channelName(String(id));
+    // snapshot: job yang sedang berjalan saat client connect
+    const active = await this.repositories.tools.redisRepository.hgetall(PROGRESS_ACTIVE_KEY);
+    for (const value of Object.values(active)) send(value);
 
-    const logRealtime = new Map<string, logRealtimeValue>();
+    const unsubscribe = await progressHub.subscribe((event) => send(event));
+    const release = sseRegistry.add(res);
 
-    // SEND SNAPSHOT
-    const snapshot = await this.repositories.tools.redisRepository.get<ProgressEvent>(
-      `${SNAPSHOT_KEY}:${channel}`,
-    );
+    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), HEARTBEAT_MS);
 
-    if (snapshot) sendEvent(`${JSON.stringify(snapshot)}\n`);
-
-    await subscriber.subscribe(channel, async (message, _) => {
-      const event: ProgressEvent = JSON.parse(message);
-
-      // SEND EVENT WHEN STATUS AND PERCENTAGE IS NOT SAME WITH PREVIOUS
-      const latestLog = logRealtime.get(event.status);
-
-      if (!latestLog || latestLog.status !== event.status || latestLog.percent !== event.percent) {
-        sendEvent(message);
-        logRealtime.set(event.status, { status: event.status, percent: event.percent });
-      }
-
-      if (event.status === TrancodingStatus.FINISHING && event.percent >= 100) {
-        cleanup();
-        res.end();
-      }
+    res.on('close', () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+      release();
     });
-
-    const heartbeatInterval = setInterval(() => res.write(': heartbeat\n'), 30_000);
-
-    function cleanup() {
-      clearInterval(heartbeatInterval);
-      subscriber.unsubscribe(channel);
-    }
-
-    res.on('close', () => cleanup());
   }
 }

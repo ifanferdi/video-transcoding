@@ -23,7 +23,7 @@ const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6381',
     ttlSeconds: process.env.REDIS_TTL_SECONDS ? Number(process.env.REDIS_TTL_SECONDS) : 60 * 6, // 6 jam
     progressChannelPrefix: process.env.PROGRESS_CHANNEL_PREFIX || 'progress',
-    snapshotKey: process.env.SNAPSHOT_KEY || 'snapshot',
+    progressActiveKey: process.env.PROGRESS_ACTIVE_KEY || 'progress:active',
   },
   cors: {
     origins: (process.env.CORS_ORIGINS || 'http://localhost:3000')

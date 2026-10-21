@@ -17,11 +17,10 @@ export default class BullMqRepository {
   ) => {
     const q = this.getQueue(queue);
 
-    return q.add('transcode', data, {
+    return q.add(queue, data, {
       delay,
       removeOnComplete,
       removeOnFail,
-      // PRD FR-7 — retry dengan exponential backoff
       attempts: 3,
       backoff: { type: 'exponential', delay: 5_000 },
     });

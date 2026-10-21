@@ -15,6 +15,7 @@ export interface TranscodeOptions {
   inputPath: string; // path file source (hasil download dari S3)
   outputDir: string; // folder tujuan hasil transcoding
   segmentDuration?: number; // durasi tiap segment .ts (detik), default 6
+  renditions?: RenditionConfig[]; // default: seluruh RENDITION_LADDER
   onProgress?: (rendition: string, percent: number) => void;
 }
 
@@ -30,6 +31,7 @@ export enum TrancodingStatus {
   PREPARING = 'preparing',
   PROCESSING = 'processing',
   FINISHING = 'finishing',
+  FAILED = 'failed',
 }
 
 export interface JobProgressCallback {
@@ -37,7 +39,7 @@ export interface JobProgressCallback {
 }
 
 /**
- * Rendition ladder default — 4 level kualitas.
+ * Rendition ladder default — 6 level kualitas.
  * Bitrate ini adalah rule of thumb, sesuaikan dengan
  * karakteristik konten (video aksi cepat butuh bitrate
  * lebih tinggi dibanding video statis/talking head).
@@ -79,4 +81,32 @@ export const RENDITION_LADDER: RenditionConfig[] = [
     maxrate: '856k',
     bufsize: '1200k',
   },
+  {
+    name: '240p',
+    width: 426,
+    height: 240,
+    videoBitrate: '400k',
+    audioBitrate: '64k',
+    maxrate: '428k',
+    bufsize: '600k',
+  },
+  {
+    name: '144p',
+    width: 256,
+    height: 144,
+    videoBitrate: '200k',
+    audioBitrate: '64k',
+    maxrate: '214k',
+    bufsize: '300k',
+  },
 ];
+
+/**
+ * Ambil rendition yang tingginya tidak melebihi source — mencegah upscaling.
+ * Source 480p → 480p ke bawah saja. Source di bawah 144p tetap dapat 1
+ * rendition terendah supaya HLS punya minimal satu variant.
+ */
+export function filterRenditionsByHeight(sourceHeight: number): RenditionConfig[] {
+  const selected = RENDITION_LADDER.filter((r) => r.height <= sourceHeight);
+  return selected.length ? selected : [RENDITION_LADDER[RENDITION_LADDER.length - 1]];
+}

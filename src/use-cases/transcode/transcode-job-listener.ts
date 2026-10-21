@@ -1,14 +1,19 @@
 import config from '@/config/config';
 import { ProgressEvent } from '@/domain/entities/models/video';
 import {
+  filterRenditionsByHeight,
   JobProgressCallback,
-  RENDITION_LADDER,
   TrancodingStatus,
   TranscodeJobPayload,
 } from '@/domain/entities/types/transcode.types';
-import { channelName, sourceKeyToOutputPrefix } from '@/helpers/common.helper';
+import { sourceKeyToOutputPrefix } from '@/helpers/common.helper';
 import { ErrorNotFound } from '@/helpers/error.helper';
-import { clampTimestamp, generateThumbnail, getVideoDuration } from '@/helpers/thumbnail.helper';
+import {
+  clampTimestamp,
+  generateThumbnail,
+  getVideoDimensions,
+  getVideoDuration,
+} from '@/helpers/thumbnail.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import * as fs from 'fs';
 import moment from 'moment';
@@ -19,6 +24,9 @@ import { TranscodeJobMessage } from '../video/upload/complete-upload';
 import { transcodeToHLS } from './_trancode-to-hls';
 
 const DEFAULT_THUMBNAIL_TIMESTAMP = config.storage.video.defaultThumbnailTimestamp;
+const PROGRESS_CHANNEL = config.redis.progressChannelPrefix;
+const PROGRESS_ACTIVE_KEY = config.redis.progressActiveKey;
+const PROGRESS_TTL_SECONDS = config.redis.ttlSeconds;
 
 export default class TranscodeJobListener extends BaseUseCase {
   async execute({ id }: TranscodeJobMessage) {
@@ -43,6 +51,8 @@ export default class TranscodeJobListener extends BaseUseCase {
         thumbnailKey: result.thumbnailKey,
         error: null,
       });
+
+      await this.clearProgress(id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -51,6 +61,9 @@ export default class TranscodeJobListener extends BaseUseCase {
         status: VideoStatus.failed,
         error: message,
       });
+
+      await this.publishProgress(id, TrancodingStatus.FAILED, 0);
+      await this.clearProgress(id);
 
       // rethrow → BullMQ menandai job gagal (attempts/backoff menangani retry)
       throw error;
@@ -74,10 +87,16 @@ export default class TranscodeJobListener extends BaseUseCase {
         thumbnailUrl: await this.repositories.tools.storageRepository.getUrl(thumbnailPath),
       };
 
-    this.repositories.tools.redisRepository.publish(
-      channelName(String(id)),
-      `${JSON.stringify(payload)}\n`,
-    );
+    const message = JSON.stringify(payload);
+    const redis = this.repositories.tools.redisRepository;
+
+    // hash = daftar job yang sedang berjalan sekaligus snapshot untuk client baru
+    await redis.hset(PROGRESS_ACTIVE_KEY, String(id), message, PROGRESS_TTL_SECONDS);
+    await redis.publish(PROGRESS_CHANNEL, message);
+  }
+
+  private async clearProgress(id: number) {
+    await this.repositories.tools.redisRepository.hdel(PROGRESS_ACTIVE_KEY, String(id));
   }
 
   private async processTranscodeJob(
@@ -133,6 +152,8 @@ export default class TranscodeJobListener extends BaseUseCase {
         fs.readFileSync(thumbnailLocalPath),
         thumbnailKey,
       );
+      // thumbnail update db
+      await this.repositories.videoRepository.update({ thumbnailKey, id });
 
       const thumbnailProgressNum = 5;
       onProgress?.(TrancodingStatus.PROCESSING, thumbnailProgressNum, thumbnailKey);
@@ -140,12 +161,16 @@ export default class TranscodeJobListener extends BaseUseCase {
       // ------------------------------------------------------
       // STEP 3: Transcode ke multi-rendition HLS
       // ------------------------------------------------------
-      const renditionCount = RENDITION_LADDER.length;
+      // Rendition dibatasi resolusi source supaya tidak upscaling.
+      const { height: sourceHeight } = await getVideoDimensions(sourceLocalPath);
+      const renditions = filterRenditionsByHeight(sourceHeight);
+      const renditionCount = renditions.length;
       const renditionProgress: Record<string, number> = {};
 
       await transcodeToHLS({
         inputPath: sourceLocalPath,
         outputDir: outputLocalDir,
+        renditions,
         onProgress: (rendition, percent) => {
           renditionProgress[rendition] = percent;
 

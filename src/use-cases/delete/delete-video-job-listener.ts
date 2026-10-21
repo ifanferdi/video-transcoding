@@ -1,26 +1,33 @@
 import { sourceKeyToOutputPrefix } from '@/helpers/common.helper';
+import S3StorageRepository from '@/repositories/filesystem/s3-storage-repository';
 import BaseUseCase from '@/use-cases/_base-use-case';
-import { DeleteVideoJobMessage } from '@/use-cases/video/delete-video';
+
+export interface DeleteVideoJobMessage {
+  id: number;
+  sourceKey: string;
+}
 
 /**
- * Worker hapus video: bersihkan object S3 (source + output HLS + thumbnail),
- * lalu hapus record DB.
- *
- * Error dari storage sengaja tidak ditelan → BullMQ retry (attempts/backoff),
- * dan record DB dipertahankan sampai cleanup benar-benar sukses.
+ * Hapus semua object S3 milik satu video: source, master.m3u8, segment, thumbnail.
+ * Dipakai worker `delete.jobs`, sekaligus fallback saat queue tidak tersedia.
+ * Error sengaja tidak ditelan → pemanggil bisa retry / melaporkan ke client.
+ */
+export async function deleteVideoObjects(
+  storage: S3StorageRepository,
+  { sourceKey }: DeleteVideoJobMessage,
+) {
+  const outputPrefix = sourceKeyToOutputPrefix(sourceKey);
+
+  await storage.deletePrefix(sourceKey);
+  await storage.deletePrefix(`${outputPrefix}/`);
+}
+
+/**
+ * Worker hapus file video. Record DB sudah dihapus lebih dulu oleh DeleteVideo,
+ * jadi payload job membawa key yang dibutuhkan — worker tidak membaca DB lagi.
  */
 export default class DeleteVideoJobListener extends BaseUseCase {
-  async execute({ id }: DeleteVideoJobMessage) {
-    const video = await this.repositories.videoRepository.findOne({ id });
-    if (!video) return; // sudah terhapus — idempotent
-
-    const storage = this.repositories.tools.storageRepository;
-    const outputPrefix = sourceKeyToOutputPrefix(video.sourceKey);
-
-    // source = 1 object; outputPrefix mencakup master.m3u8, segment .ts, dan thumbnail.
-    await storage.deletePrefix(video.sourceKey);
-    await storage.deletePrefix(`${outputPrefix}/`);
-
-    await this.repositories.videoRepository.destroy(id);
+  async execute(message: DeleteVideoJobMessage) {
+    await deleteVideoObjects(this.repositories.tools.storageRepository, message);
   }
 }

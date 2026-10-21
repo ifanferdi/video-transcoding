@@ -23,7 +23,8 @@ const PORT = config.app.port || 8100;
   const shutdown = async () => {
     console.log('Shutting down gracefully...');
     server.close(); // stop terima request baru
-    await closeResources(); // tutup worker BullMQ + koneksi Redis
+    await closeResources(); // tutup koneksi SSE + worker BullMQ + koneksi Redis
+    server.closeAllConnections?.(); // sisa koneksi keep-alive
     process.exit(0);
   };
 

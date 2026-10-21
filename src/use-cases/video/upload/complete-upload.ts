@@ -6,7 +6,6 @@ export interface TranscodeJobMessage {
   id: number;
 }
 
-
 export default class CompleteUpload extends BaseUseCase {
   async execute(id: number, body: TriggerTranscodeDto = {}) {
     const video = await this.repositories.videoRepository.findOne({ id });
@@ -22,11 +21,11 @@ export default class CompleteUpload extends BaseUseCase {
     if (!isExist)
       throw new ErrorBadRequest('Source file not found in storage. Upload not complete.');
 
-    const rabbitmqRepository = this.repositories.tools.rabbitmqRepository;
-    if (!rabbitmqRepository)
+    const bullmqRepository = this.repositories.tools.bullmqRepository;
+    if (!bullmqRepository)
       throw new ErrorBadRequest('Queue unavailable. Transcoding not configured.');
 
-    await rabbitmqRepository.publishJob<TranscodeJobMessage>('transcode.jobs', { id });
+    await bullmqRepository.publishJob<TranscodeJobMessage>('transcode.jobs', { id });
 
     return this.repositories.videoRepository.update({
       id,

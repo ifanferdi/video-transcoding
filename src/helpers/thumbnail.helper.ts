@@ -76,6 +76,21 @@ export function getVideoDuration(inputPath: string): Promise<number> {
 }
 
 /**
+ * Baca resolusi video source (stream video pertama) via ffprobe.
+ * Dipakai untuk memilih rendition ladder — jangan transcode ke
+ * resolusi lebih besar dari source (upscaling).
+ */
+export function getVideoDimensions(inputPath: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(inputPath, (err, metadata) => {
+      if (err) return reject(err);
+      const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
+      resolve({ width: videoStream?.width ?? 0, height: videoStream?.height ?? 0 });
+    });
+  });
+}
+
+/**
  * Clamp timestamp yang diminta client supaya tidak melebihi durasi
  * video, dengan sedikit margin dari ujung akhir (video kadang tidak
  * punya frame valid persis di detik terakhir).

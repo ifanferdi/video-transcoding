@@ -19,7 +19,7 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
  * secara SEQUENTIAL (satu per satu), lalu generate master playlist.
  *
  * Catatan: sengaja sequential (bukan Promise.all paralel) karena
- * FFmpeg transcoding itu CPU-bound berat. Menjalankan 4 rendition
+ * FFmpeg transcoding itu CPU-bound berat. Menjalankan semua rendition
  * sekaligus secara paralel di satu proses bisa membuat masing-masing
  * rendition justru lebih lambat (CPU contention) dan sulit dikontrol
  * resource-nya. Untuk paralelisme, lebih baik dilakukan di level
@@ -27,7 +27,13 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
  * bukan di dalam 1 job yang sama.
  */
 export async function transcodeToHLS(options: TranscodeOptions): Promise<string> {
-  const { inputPath, outputDir, segmentDuration = 6, onProgress } = options;
+  const {
+    inputPath,
+    outputDir,
+    segmentDuration = 6,
+    onProgress,
+    renditions = RENDITION_LADDER,
+  } = options;
 
   if (!fs.existsSync(inputPath)) {
     throw new Error(`File source tidak ditemukan: ${inputPath}`);
@@ -35,12 +41,12 @@ export async function transcodeToHLS(options: TranscodeOptions): Promise<string>
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  for (const rendition of RENDITION_LADDER)
+  for (const rendition of renditions)
     await transcodeRendition(inputPath, outputDir, rendition, segmentDuration, (percent) =>
       onProgress?.(rendition.name, percent),
     );
 
-  generateMasterPlaylist(outputDir, RENDITION_LADDER);
+  generateMasterPlaylist(outputDir, renditions);
 
   return path.join(outputDir, 'master.m3u8');
 }

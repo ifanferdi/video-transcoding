@@ -10,17 +10,24 @@ export default class FindAllVideo extends BaseUseCase {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
 
-    const [videos, total] = await Promise.all([
-      this.repositories.videoRepository.findAll<ResponseVideo>({ ...params, page, limit }),
+    let [videos, total] = await Promise.all([
+      this.repositories.videoRepository.findAll<Omit<ResponseVideo, 'playback'>>({
+        ...params,
+        page,
+        limit,
+      }),
       this.repositories.videoRepository.count(params),
     ]);
 
     const expiresIn = config.storage.expiredTime;
-    await Promise.all(
+    videos = await Promise.all(
       videos.map(async (video): Promise<ResponseVideo> => ({
         ...video,
         playback: {
           expiresIn: moment().add(expiresIn, 'seconds').toDate(),
+          masterUrl: video.hlsKey
+            ? await this.repositories.tools.storageRepository.getUrl(video.hlsKey, expiresIn)
+            : undefined,
           thumbnailUrl: video.thumbnailKey
             ? await this.repositories.tools.storageRepository.getUrl(video.thumbnailKey)
             : undefined,

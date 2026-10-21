@@ -3,7 +3,9 @@ import VideoController from '@/adapters/http/controller/video-controller';
 import express from '@/adapters/http/webserver/express';
 import { Controllers } from '@/domain/adapters/controller.interface';
 import { UseCases } from '@/domain/use-cases/use-case.interface';
+import progressHub from '@/infrastructure/redis/progress-hub';
 import RedisConnection from '@/infrastructure/redis/redis-connection';
+import sseRegistry from '@/infrastructure/sse/sse-registry';
 import BullMqRepository from '@/repositories/bullmq/bullmq-repository';
 import { Express } from 'express';
 import DeleteVideoJobListener from './use-cases/delete/delete-video-job-listener';
@@ -29,8 +31,10 @@ export default async function bootstrap(app: Express) {
 
   express(app, controllers, useCases, bullMqRepository);
 
-  // Graceful shutdown: tunggu job aktif selesai, tutup worker/queue/koneksi Redis
+  // Graceful shutdown: tutup koneksi SSE, subscriber Redis, worker/queue
   return async () => {
+    sseRegistry.closeAll();
+    await progressHub.close();
     await bullMqRepository.close();
   };
 }

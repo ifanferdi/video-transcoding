@@ -1,5 +1,3 @@
-import config from '@/config/config';
-
 export function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -13,5 +11,3 @@ export function sourceKeyToOutputPrefix(sourceKey: string): string {
   // videos/source/2026/uuid.mp4 -> videos/output/uuid
   return sourceKey.replace(/^videos\/source\/\d{4}\//, 'videos/output/').replace(/\.[^/.]+$/, ''); // hapus ekstensi file (.mp4)
 }
-
-export const channelName = (string: string) => `${config.redis.progressChannelPrefix}:${string}`;

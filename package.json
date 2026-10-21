@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "bun dist/app.js",
     "typecheck": "tsc --noEmit",
+    "test": "bun test",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "prisma": "bunx prisma generate",

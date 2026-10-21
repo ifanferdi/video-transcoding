@@ -109,7 +109,7 @@ export default class VideoController extends BaseController {
     res.status(202).json(result);
   });
 
-  realtimeProgress = asyncHandler(async (req: e.Request, res: e.Response) => {
+  realtimeProgress = asyncHandler(async (_req: e.Request, res: e.Response) => {
     // ------------------------------------------------------
     // 1. Setup response header untuk SSE
     // ------------------------------------------------------
@@ -121,9 +121,6 @@ export default class VideoController extends BaseController {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
-    const { id } = BaseFindById.parse({ id: req.params.id });
-    BaseFindById.parse({ id });
-
-    await this.useCases.videoUseCase.realtimeProgressVideo.execute({ res, id });
+    await this.useCases.videoUseCase.realtimeProgressVideo.execute({ res });
   });
 }
