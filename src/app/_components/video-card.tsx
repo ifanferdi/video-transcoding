@@ -1,20 +1,17 @@
 "use client";
 
-import { FilmSlate, Play, WarningCircle } from "@phosphor-icons/react";
-import type {
-  Progress,
-  ProgressStage,
-  QualityLabel,
-  Video,
-  VideoStatus,
-} from "@/domain/video.types";
-import { formatBytes, formatDate } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import type { Progress, ProgressStage, Video, VideoStatus } from "@/domain/video.types";
+import { getMasterMaxQuality } from "@/features/videos/api";
+import { dummyDuration, formatBytes, formatDate } from "@/lib/helper";
+import { useQuery } from "@tanstack/react-query";
+import { CircleAlert, Film, Play, Trash2 } from "lucide-react";
 
 interface VideoCardProps {
   video: Video;
   progress?: Progress;
-  maxQuality?: QualityLabel;
   onPlay?: (video: Video) => void;
+  onDelete?: (video: Video) => void;
 }
 
 const THUMB_GRADIENTS = [
@@ -49,21 +46,30 @@ const STAGE_LABEL: Record<ProgressStage, string> = {
   preparing: "Preparing",
   processing: "Transcoding",
   finishing: "Finishing",
+  failed: "Failed",
 };
 
-export function VideoCard({
-  video,
-  progress,
-  maxQuality,
-  onPlay,
-}: VideoCardProps) {
+export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps) {
   const isReady = video.status === "ready";
   const isFailed = video.status === "failed";
+  const isProcessing = video.status === "processing";
+  // Backend menolak delete selama job masih queued/processing.
+  const canDelete = !isProcessing && video.status !== "queued" && Boolean(onDelete);
   const status = STATUS_META[video.status];
-  const showProgress =
-    video.status === "uploading" || video.status === "processing";
   const percent = Math.min(progress?.percent ?? 0, 100);
   const gradient = THUMB_GRADIENTS[video.id % THUMB_GRADIENTS.length];
+
+  const thumbnailUrl = video.playback?.thumbnailUrl;
+
+  const masterUrl = video?.playback?.masterUrl;
+
+  const maxQualityQuery = useQuery({
+    queryKey: ["hls-max", video.id],
+    queryFn: () => getMasterMaxQuality(masterUrl!),
+    enabled: !!masterUrl,
+    staleTime: Infinity,
+  });
+  const maxQuality = maxQualityQuery.data ?? null;
 
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:bg-surface-hover">
@@ -77,14 +83,14 @@ export function VideoCard({
         }`}
       >
         <div className="absolute inset-0" style={{ background: gradient }} />
+        {thumbnailUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- signed storage URL, not optimizable
+          <img src={thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
 
         {!isReady && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <FilmSlate
-              size={40}
-              weight="light"
-              className="text-foreground/15"
-            />
+            <Film size={40} strokeWidth={1.5} className="text-foreground/15" />
           </div>
         )}
 
@@ -104,43 +110,31 @@ export function VideoCard({
 
         {isReady && (
           <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
-            <span className="flex h-14 w-14 scale-90 items-center justify-center rounded-full bg-accent text-white opacity-0 shadow-lg transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
-              <Play size={24} weight="fill" className="ml-0.5" />
+            <span className="flex h-14 w-14 scale-90 items-center justify-center rounded-full bg-gray-300 text-black opacity-0 shadow-lg transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
+              <Play size={24} fill="currentColor" className="ml-0.5" />
             </span>
           </span>
         )}
 
         {isFailed && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <WarningCircle
-              size={40}
-              weight="light"
-              className="text-status-failed/70"
-            />
+            <CircleAlert size={40} strokeWidth={1.5} className="text-status-failed/70" />
           </div>
         )}
 
         <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-foreground">
-          {video.duration}
+          {dummyDuration(video.fileSize)}
         </span>
 
-        {showProgress && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3 pt-8">
+        {isProcessing && (
+          <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent p-3 pt-8">
             <div className="flex items-center justify-between text-xs text-foreground/90">
-              <span>
-                {video.status === "processing" && progress
-                  ? STAGE_LABEL[progress.stage]
-                  : "Uploading"}
-              </span>
+              <span>{progress ? STAGE_LABEL[progress.stage] : "Processing"}</span>
               <span>{Math.round(percent)}%</span>
             </div>
             <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/15">
               <div
-                className={`h-full rounded-full transition-[width] duration-150 ${
-                  video.status === "processing"
-                    ? "bg-status-processing"
-                    : "bg-status-uploading"
-                }`}
+                className="h-full rounded-full bg-status-processing transition-[width] duration-150"
                 style={{ width: `${percent}%` }}
               />
             </div>
@@ -152,14 +146,23 @@ export function VideoCard({
         <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
           {video.title}
         </h3>
-        <div className="mt-1.5 flex items-center justify-between text-xs text-muted">
+        <div className="mt-1.5 flex items-center justify-between gap-1 text-xs text-muted">
           <span>{formatBytes(video.fileSize)}</span>
-          <span>{formatDate(video.createdAt)}</span>
+          <span className="ml-auto">{formatDate(video.createdAt)}</span>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${video.title}`}
+              onClick={() => onDelete?.(video)}
+              className="text-accent!"
+            >
+              <Trash2 size={14} />
+            </Button>
+          )}
         </div>
         {isFailed && video.error && (
-          <p className="mt-1.5 line-clamp-2 text-xs text-status-failed">
-            {video.error}
-          </p>
+          <p className="mt-1.5 line-clamp-2 text-xs text-status-failed">{video.error}</p>
         )}
       </div>
     </article>

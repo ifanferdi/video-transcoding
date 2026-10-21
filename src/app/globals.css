@@ -9,10 +9,10 @@
   --color-muted: #a3a3a3;
   --color-accent: #e50914;
   --color-accent-hover: #f61b24;
-  --color-status-uploading: #3b82f6;
-  --color-status-queued: #f59e0b;
-  --color-status-processing: #e50914;
-  --color-status-ready: #22c55e;
+  --color-status-uploading: #38bdf8;
+  --color-status-queued: #a78bfa;
+  --color-status-processing: #fbbf24;
+  --color-status-ready: #4ade80;
   --color-status-failed: #ef4444;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }

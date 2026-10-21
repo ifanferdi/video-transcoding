@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { X } from "@phosphor-icons/react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Video } from "@/domain/video.types";
 import { createPlayer } from "@/lib/video-player";
-import { DEMO_HLS_URL } from "@/mock/videos";
 
 interface VideoPlayerDialogProps {
   video: Video;
@@ -12,19 +12,22 @@ interface VideoPlayerDialogProps {
 }
 
 export function VideoPlayerDialog({ video, onClose }: VideoPlayerDialogProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<ReturnType<typeof createPlayer> | null>(null);
 
+  const masterUrl = video?.playback?.masterUrl;
+
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    const player = createPlayer(el, DEMO_HLS_URL);
+    if (!masterUrl) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const player = createPlayer(container, masterUrl);
     playerRef.current = player;
     return () => {
       player.dispose();
       playerRef.current = null;
     };
-  }, [video.id]);
+  }, [masterUrl]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -49,23 +52,18 @@ export function VideoPlayerDialog({ video, onClose }: VideoPlayerDialogProps) {
               Adaptive quality — Auto / 360 / 480 / 720 / 1080
             </p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-lg"
             aria-label="Close player"
             onClick={onClose}
-            className="rounded-lg p-2 text-muted transition-colors hover:bg-white/10 hover:text-foreground"
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
         <div className="overflow-hidden rounded-xl border border-border bg-black">
-          <div data-vjs-player>
-            <video
-              ref={videoRef}
-              className="video-js vjs-big-play-centered"
-              playsInline
-            />
-          </div>
+          <div ref={containerRef} />
         </div>
       </div>
     </div>

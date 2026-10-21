@@ -1,55 +1,45 @@
-"use client";
-
-import { UploadDialog } from "@/app/_components/upload-dialog";
-import { VideoCard } from "@/app/_components/video-card";
-import { VideoPlayerDialog } from "@/app/_components/video-player-dialog";
-import type { Video } from "@/domain/video.types";
-import { useVideoLibrary } from "@/hooks/use-video-library";
-import { MOCK_MAX_QUALITY } from "@/mock/videos";
-import { UploadSimple } from "@phosphor-icons/react";
-import { useState } from "react";
+import { isSessionUnlocked } from "@/features/videos/action";
+import { listVideos } from "@/features/videos/api";
+import { Suspense } from "react";
+import { VideoLibrary } from "./_components/video-library";
 
 export default function Home() {
-  const { videos, progress, addVideo } = useVideoLibrary();
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [playing, setPlaying] = useState<Video | null>(null);
-
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          `<h1 className="text-xl font-bold tracking-tight text-foreground">VidFlow</h1>
-          <p className="mt-1 text-sm text-muted">Upload & stream video with adaptive quality</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setUploadOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          <UploadSimple size={18} weight="bold" />
-          Upload
-        </button>
-      </header>
+    <div className="mx-auto w-full max-w-[108rem] px-4 py-8 sm:px-6">
+      <Suspense fallback={<LibrarySkeleton />}>
+        <LibraryData />
+      </Suspense>
+    </div>
+  );
+}
 
-      <main className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 lg:gap-5">
-        {videos.map((video) => (
-          <VideoCard
-            key={video.id}
-            video={video}
-            progress={progress[video.id]}
-            maxQuality={MOCK_MAX_QUALITY[video.id]}
-            onPlay={setPlaying}
-          />
-        ))}
-      </main>
+/**
+ * Ambil data awal di server (list + status gate) supaya HTML pertama sudah
+ * berisi. Setelah itu client yang urus refetch lewat TanStack Query.
+ */
+async function LibraryData() {
+  const [initialData, initialUnlocked] = await Promise.all([
+    // Backend mati → biar client yang tampilkan state error + retry.
+    listVideos({ limit: -1 }).catch(() => undefined),
+    isSessionUnlocked(),
+  ]);
 
-      {videos.length === 0 && (
-        <div className="mt-24 text-center text-muted">No videos yet. Upload your first video.</div>
-      )}
+  return <VideoLibrary initialData={initialData} initialUnlocked={initialUnlocked} />;
+}
 
-      {uploadOpen && <UploadDialog onClose={() => setUploadOpen(false)} onUploaded={addVideo} />}
-
-      {playing && <VideoPlayerDialog video={playing} onClose={() => setPlaying(null)} />}
+function LibrarySkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading videos"
+      className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 lg:gap-5"
+    >
+      {Array.from({ length: 4 }, (_, i) => (
+        <div
+          key={i}
+          className="aspect-4/3 animate-pulse rounded-xl border border-border bg-surface"
+        />
+      ))}
     </div>
   );
 }

@@ -1,3 +1,9 @@
+export function cn(
+  ...classes: Array<string | false | null | undefined>
+): string {
+  return classes.filter(Boolean).join(" ");
+}
+
 export function formatBytes(bytes: number | null): string {
   if (bytes == null) return "—";
   const units = ["B", "KB", "MB", "GB"];
