@@ -1,4 +1,6 @@
 node_modules
 .next
 .git
+bun.lockb
+*.md
 docs/postman.collection.json
