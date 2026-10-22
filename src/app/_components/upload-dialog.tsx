@@ -1,5 +1,6 @@
 "use client";
 
+import { ThumbnailPicker } from "@/app/_components/thumbnail-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { UPLOAD_SINGLE_MAX_SIZE } from "@/config/config";
@@ -22,6 +23,7 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [thumbnailTimestamp, setThumbnailTimestamp] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (selected: File | null | undefined) => {
@@ -40,15 +42,27 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
       );
       setStep("idle");
       setFile(null);
+      setThumbnailTimestamp(0);
       return;
     }
     setError(null);
     setFile(selected);
+    setThumbnailTimestamp(0);
     setStep("selected");
   };
 
   const startUpload = async () => {
     if (!file) return;
+    const parsed = uploadSchema.safeParse({
+      filename: file.name,
+      contentType: file.type,
+      fileSize: file.size,
+      thumbnailTimestamp,
+    });
+    if (!parsed.success) {
+      setError("Invalid thumbnail timestamp.");
+      return;
+    }
     setStep("uploading");
     setPercent(0);
     setError(null);
@@ -57,6 +71,7 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
         filename: file.name,
         contentType: file.type,
         fileSize: file.size,
+        thumbnailTimestamp: parsed.data.thumbnailTimestamp,
       });
 
       await putToPresign(presign.upload.presignUrl, file, (percent) => setPercent(percent));
@@ -71,7 +86,13 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
   };
 
   return (
-    <Dialog open onClose={onClose} title="Upload video" className="max-w-md">
+    <Dialog
+      open
+      onClose={onClose}
+      title="Upload video"
+      className="max-w-md"
+      dismissible={step !== "uploading"}
+    >
       {step === "idle" && (
         <>
           <button
@@ -100,7 +121,7 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
             className="hidden"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
-          {error && <p className="mt-3 text-sm text-status-failed">{error}</p>}
+          {error && <p className="mt-3 text-sm text-status-failed-text">{error}</p>}
         </>
       )}
 
@@ -113,7 +134,14 @@ export function UploadDialog({ onClose, onUploaded }: UploadDialogProps) {
               <p className="text-xs text-muted">{formatBytes(file.size)}</p>
             </div>
           </div>
-          {error && <p className="mt-3 text-sm text-status-failed">{error}</p>}
+
+          <ThumbnailPicker
+            file={file}
+            value={thumbnailTimestamp}
+            onChange={setThumbnailTimestamp}
+          />
+
+          {error && <p className="mt-3 text-sm text-status-failed-text">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

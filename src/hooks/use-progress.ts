@@ -47,8 +47,7 @@ export function useProgress(videos: Tracked[]) {
       } catch {
         return; // event rusak — lanjut ke event berikutnya
       }
-
-      if (payload.meta?.thumbnailUrl) queryClient.invalidateQueries({ queryKey: ["videos"] });
+      if (payload.isThumbnailReady) queryClient.invalidateQueries({ queryKey: ["videos"] });
 
       setProgress((prev) => ({
         ...prev,

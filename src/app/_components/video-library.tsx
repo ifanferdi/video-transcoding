@@ -6,8 +6,9 @@ import { listVideosAction, lockSession } from "@/features/videos/action";
 import { getApiErrorMessage } from "@/features/videos/api";
 import { useProgress } from "@/hooks/use-progress";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Lock, LockOpen, Upload } from "lucide-react";
+import { Lock, LockOpen, Upload, UserRound } from "lucide-react";
 import { useState } from "react";
+import { AboutDialog } from "./about-dialog";
 import { DeleteVideoDialog } from "./delete-video-dialog";
 import { UnlockDialog } from "./unlock-dialog";
 import { UploadDialog } from "./upload-dialog";
@@ -38,6 +39,7 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
 
   const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [playing, setPlaying] = useState<Video | null>(null);
   const [deleting, setDeleting] = useState<Video | null>(null);
@@ -59,6 +61,10 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
           <p className="mt-1 text-sm text-muted">Upload & stream video with adaptive quality</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" onClick={() => setAboutOpen(true)}>
+            <UserRound size={18} />
+            About
+          </Button>
           {unlocked && (
             <Button type="button" onClick={() => setUploadOpen(true)} className="font-semibold">
               <Upload size={18} strokeWidth={2.5} />
@@ -89,7 +95,9 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
       )}
       {listQuery.isError && (
         <div className="mt-24 flex flex-col items-center gap-3 text-center">
-          <p className="text-sm text-status-failed">Failed to load videos. Is the API running?</p>
+          <p className="text-sm text-status-failed-text">
+            Failed to load videos. Is the API running?
+          </p>
           <p className="text-xs text-muted">{getApiErrorMessage(listQuery.error)}</p>
           <Button type="button" variant="outline" onClick={() => listQuery.refetch()}>
             Retry
@@ -130,6 +138,8 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
       )}
 
       {playing && <VideoPlayerDialog video={playing} onClose={() => setPlaying(null)} />}
+
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
     </>
   );
 }

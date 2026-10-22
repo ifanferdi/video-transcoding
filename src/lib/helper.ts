@@ -1,6 +1,4 @@
-export function cn(
-  ...classes: Array<string | false | null | undefined>
-): string {
+export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
 }
 
@@ -15,6 +13,15 @@ export function formatBytes(bytes: number | null): string {
   }
   const digits = value >= 100 || unit === 0 ? 0 : 1;
   return `${value.toFixed(digits)} ${units[unit]}`;
+}
+
+export function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }
 
 export function formatDate(iso: string): string {

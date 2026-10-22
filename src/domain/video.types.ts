@@ -39,7 +39,7 @@ export interface ProgressEvent {
   status: ProgressStage;
   percent: number;
   updatedAt: string;
-  meta?: { thumbnailUrl: string };
+  isThumbnailReady?: boolean;
 }
 
 export interface Progress {

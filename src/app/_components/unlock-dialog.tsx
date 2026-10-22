@@ -37,6 +37,9 @@ export function UnlockDialog({ onClose, onUnlocked }: UnlockDialogProps) {
     <Dialog open onClose={onClose} title="Unlock" className="max-w-md" initialFocus={inputRef}>
       <form onSubmit={submit} className="mt-4">
         <p className="text-sm text-muted">Enter the key to enable uploading and deleting videos.</p>
+        <p className="mt-2 text-xs text-muted">
+          Need the key? Contact the <strong>admin</strong> to request access to all features.
+        </p>
         <Input
           ref={inputRef}
           type="password"
@@ -46,7 +49,7 @@ export function UnlockDialog({ onClose, onUnlocked }: UnlockDialogProps) {
           aria-label="Unlock key"
           className="mt-3"
         />
-        {error && <p className="mt-3 text-sm text-status-failed">{error}</p>}
+        {error && <p className="mt-3 text-sm text-status-failed-text">{error}</p>}
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
             Cancel

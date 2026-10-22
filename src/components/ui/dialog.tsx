@@ -14,6 +14,8 @@ interface DialogProps {
   className?: string;
   /** Elemen yang difokuskan setelah dialog terbuka. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** `false` = dialog tidak bisa ditutup (X, backdrop, Escape), mis. saat proses berjalan. */
+  dismissible?: boolean;
 }
 
 /**
@@ -21,7 +23,15 @@ interface DialogProps {
  * tanpa listener tambahan. Padding di elemen dalam supaya klik di area panel
  * tidak dianggap klik backdrop.
  */
-export function Dialog({ open, onClose, title, children, className, initialFocus }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  children,
+  className,
+  initialFocus,
+  dismissible = true,
+}: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -40,9 +50,13 @@ export function Dialog({ open, onClose, title, children, className, initialFocus
     <dialog
       ref={ref}
       aria-labelledby={titleId}
+      // `cancel` = tombol Escape; dicegah selama dialog tidak boleh ditutup.
+      onCancel={(event) => {
+        if (!dismissible) event.preventDefault();
+      }}
       onClose={onClose}
       onClick={(event) => {
-        if (event.target === ref.current) onClose();
+        if (dismissible && event.target === ref.current) onClose();
       }}
       className={cn(
         "m-auto w-[calc(100%-2rem)] rounded-2xl border border-border bg-surface text-foreground shadow-2xl backdrop:bg-black/70",
@@ -54,7 +68,13 @@ export function Dialog({ open, onClose, title, children, className, initialFocus
           <h2 id={titleId} className="text-lg font-semibold">
             {title}
           </h2>
-          <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Close"
+            onClick={onClose}
+            disabled={!dismissible}
+          >
             <X size={18} />
           </Button>
         </div>

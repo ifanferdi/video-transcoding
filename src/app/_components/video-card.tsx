@@ -25,20 +25,20 @@ const THUMB_GRADIENTS = [
 const STATUS_META: Record<VideoStatus, { label: string; className: string }> = {
   uploading: {
     label: "Uploading",
-    className: "text-status-uploading bg-status-uploading/10",
+    className: "bg-status-uploading/80",
   },
   queued: {
     label: "Queued",
-    className: "text-status-queued bg-status-queued/10",
+    className: "bg-status-queued/80",
   },
   processing: {
     label: "Processing",
-    className: "text-status-processing bg-status-processing/10",
+    className: "bg-status-processing/80",
   },
-  ready: { label: "Ready", className: "text-status-ready bg-status-ready/10" },
+  ready: { label: "Ready", className: "bg-status-ready/80" },
   failed: {
     label: "Failed",
-    className: "text-status-failed bg-status-failed/10",
+    className: "bg-status-failed/80",
   },
 };
 
@@ -51,6 +51,7 @@ const STAGE_LABEL: Record<ProgressStage, string> = {
 
 export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps) {
   const isReady = video.status === "ready";
+  const isQueued = video.status === "queued";
   const isFailed = video.status === "failed";
   const isProcessing = video.status === "processing";
   // Backend menolak delete selama job masih queued/processing.
@@ -82,13 +83,21 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
           isReady ? "cursor-pointer" : "cursor-default"
         }`}
       >
-        <div className="absolute inset-0" style={{ background: gradient }} />
+        {isQueued ? (
+          <div className="absolute inset-0" style={{ background: gradient }} />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center"></div>
+        )}
         {thumbnailUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- signed storage URL, not optimizable
-          <img src={thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className={`absolute inset-0 h-full w-full object-cover ${(isFailed || isProcessing) && "opacity-30"}`}
+          />
         )}
 
-        {!isReady && (
+        {isQueued && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Film size={40} strokeWidth={1.5} className="text-foreground/15" />
           </div>
@@ -96,7 +105,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
 
         {!isReady && (
           <span
-            className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+            className={`absolute right-3 top-3 rounded-md px-2 py-0.5 text-xs font-semibold text-foreground backdrop-blur ${status.className}`}
           >
             {status.label}
           </span>
@@ -118,7 +127,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
 
         {isFailed && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <CircleAlert size={40} strokeWidth={1.5} className="text-status-failed/70" />
+            <CircleAlert size={40} className="text-status-failed" />
           </div>
         )}
 
@@ -162,7 +171,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
           )}
         </div>
         {isFailed && video.error && (
-          <p className="mt-1.5 line-clamp-2 text-xs text-status-failed">{video.error}</p>
+          <p className="mt-1.5 line-clamp-2 text-xs text-status-failed-text">{video.error}</p>
         )}
       </div>
     </article>
