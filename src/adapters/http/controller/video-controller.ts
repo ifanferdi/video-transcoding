@@ -7,15 +7,11 @@ import {
   FindByIdVideoSchema,
   PresignPartSchema,
   PresignUploadSchema,
-  TriggerTranscodeSchema,
 } from '@/validations/video-validation';
 import e from 'express';
 import asyncHandler from 'express-async-handler';
 
 export default class VideoController extends BaseController {
-  /**
-   * GET /api/v1/videos — list semua video (job tracking)
-   */
   findAll = asyncHandler(async (req: e.Request, res: e.Response) => {
     const params = FindAllVideoSchema.parse(req.query);
     const result = await this.useCases.videoUseCase.findAllVideo.execute(params);
@@ -23,9 +19,6 @@ export default class VideoController extends BaseController {
     res.json(result);
   });
 
-  /**
-   * GET /api/v1/videos/:id — detail video + status + playback URL
-   */
   findOne = asyncHandler(async (req: e.Request, res: e.Response) => {
     const params = FindByIdVideoSchema.parse({ id: Number(req.params.id), ...req.query });
 
@@ -34,10 +27,6 @@ export default class VideoController extends BaseController {
     res.json(result);
   });
 
-  /**
-   * Fase 1 — POST /api/v1/videos/presign
-   * Generate presigned PUT URL (single upload, file kecil).
-   */
   presignUpload = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = PresignUploadSchema.parse(req.body);
     const result = await this.useCases.videoUseCase.generatePresignUrl.execute(body);
@@ -45,10 +34,6 @@ export default class VideoController extends BaseController {
     res.status(201).json(result);
   });
 
-  /**
-   * Fase 5 — POST /api/v1/videos/multipart
-   * Init multipart upload untuk file besar → uploadId.
-   */
   createMultipart = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = CreateMultipartSchema.parse(req.body);
 
@@ -57,10 +42,6 @@ export default class VideoController extends BaseController {
     res.status(201).json(result);
   });
 
-  /**
-   * Fase 5 — POST /api/v1/videos/:id/multipart/parts/presign
-   * Presigned URL untuk part(s) tertentu.
-   */
   presignParts = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = PresignPartSchema.parse(req.body);
     const result = await this.useCases.videoUseCase.presignPartUrl.execute(
@@ -71,10 +52,6 @@ export default class VideoController extends BaseController {
     res.json(result);
   });
 
-  /**
-   * Fase 5 — POST /api/v1/videos/:id/multipart/complete
-   * Complete multipart upload.
-   */
   completeMultipart = asyncHandler(async (req: e.Request, res: e.Response) => {
     const body = CompleteMultipartSchema.parse(req.body);
     const result = await this.useCases.videoUseCase.completeMultipartUpload.execute(
@@ -85,23 +62,12 @@ export default class VideoController extends BaseController {
     res.json(result);
   });
 
-  /**
-   * Fase 1 — POST /api/v1/videos/:id/transcode
-   * "Complete upload" → verifikasi file ada → enqueue job transcoding.
-   */
-  CompleteUpload = asyncHandler(async (req: e.Request, res: e.Response) => {
-    const body = TriggerTranscodeSchema.parse(req.body || {});
-    const result = await this.useCases.videoUseCase.CompleteUpload.execute(
-      Number(req.params.id),
-      body,
-    );
+  completeUpload = asyncHandler(async (req: e.Request, res: e.Response) => {
+    const result = await this.useCases.videoUseCase.completeUpload.execute(Number(req.params.id));
 
     res.status(202).json(result);
   });
 
-  /**
-   * DELETE /api/v1/videos/:id — hapus video + object S3 (async via queue).
-   */
   deleteVideo = asyncHandler(async (req: e.Request, res: e.Response) => {
     const { id } = BaseFindById.parse({ id: req.params.id });
     const result = await this.useCases.videoUseCase.deleteVideo.execute(id);

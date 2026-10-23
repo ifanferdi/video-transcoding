@@ -50,7 +50,7 @@ async function setupUseCases(): Promise<UseCases> {
       GenerateMultipartPresignUrl: new GenerateMultipartPresignUrl(redisClient),
       presignPartUrl: new PresignPartUrl(redisClient),
       completeMultipartUpload: new CompleteMultipartUpload(redisClient),
-      CompleteUpload: new CompleteUpload(redisClient),
+      completeUpload: new CompleteUpload(redisClient),
       realtimeProgressVideo: new RealtimeProgressVideo(redisClient),
       deleteVideo: new DeleteVideo(redisClient),
     },

@@ -5,8 +5,10 @@ import { ErrorBadRequest } from '@/helpers/error.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import { z } from 'zod';
 import { BaseFindById, BasePagination, NumberSchema, StringSchema } from './base-validation';
+
 const Relations = z.array(z.nativeEnum(VideoRelation)).optional();
 const videoColumns = z.array(z.nativeEnum(VIDEO_FIELD)).optional();
+const DEFAULT_THUMBNAIL_TIMESTAMP = config.storage.video.defaultThumbnailTimestamp;
 
 export const FindByIdVideoSchema = BaseFindById.extend({
   with: Relations,
@@ -39,6 +41,7 @@ export const PresignUploadSchema = z.object({
   fileType: z.literal('video'),
   contentType: z.enum(config.storage.video.types),
   fileSize: NumberSchema.max(config.storage.maxSize).int().positive(),
+  thumbnailTimestamp: NumberSchema.default(DEFAULT_THUMBNAIL_TIMESTAMP).optional(),
 });
 
 export const CreateMultipartSchema = PresignUploadSchema.extend({

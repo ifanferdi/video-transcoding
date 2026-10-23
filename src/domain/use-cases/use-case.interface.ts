@@ -17,7 +17,7 @@ export interface VideoUseCases {
   GenerateMultipartPresignUrl: GenerateMultipartPresignUrl;
   presignPartUrl: PresignPartUrl;
   completeMultipartUpload: CompleteMultipartUpload;
-  CompleteUpload: CompleteUpload;
+  completeUpload: CompleteUpload;
   realtimeProgressVideo: RealtimeProgressVideo;
   deleteVideo: DeleteVideo;
 }

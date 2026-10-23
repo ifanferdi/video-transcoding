@@ -41,7 +41,10 @@ export default class TranscodeJobListener extends BaseUseCase {
       const thumbnailTimestamp = video.thumbnailTimestamp ?? DEFAULT_THUMBNAIL_TIMESTAMP;
       const result = await this.processTranscodeJob(
         { id, sourceKey, outputPrefix, thumbnailTimestamp },
-        (status, percent, thumbnailKey) => this.publishProgress(id, status, percent, thumbnailKey),
+        (status, percent, thumbnailKey) => {
+          if (!Number.isInteger(percent)) return;
+          this.publishProgress(id, status, percent, thumbnailKey);
+        },
       );
 
       await this.repositories.videoRepository.update({
@@ -82,10 +85,7 @@ export default class TranscodeJobListener extends BaseUseCase {
       status,
       updatedAt: new Date(),
     };
-    if (thumbnailPath)
-      payload.meta = {
-        thumbnailUrl: await this.repositories.tools.storageRepository.getUrl(thumbnailPath),
-      };
+    if (thumbnailPath) payload.isThumbnailReady = true;
 
     const message = JSON.stringify(payload);
     const redis = this.repositories.tools.redisRepository;
@@ -174,9 +174,11 @@ export default class TranscodeJobListener extends BaseUseCase {
         onProgress: (rendition, percent) => {
           renditionProgress[rendition] = percent;
 
-          const totalPercent =
+          const totalPercent = Math.min(
+            100,
             Object.values(renditionProgress).reduce((a, b) => a + b, thumbnailProgressNum) /
-            renditionCount;
+              renditionCount,
+          );
           onProgress?.(TrancodingStatus.PROCESSING, totalPercent);
         },
       });

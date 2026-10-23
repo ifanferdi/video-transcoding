@@ -11,7 +11,7 @@ export default function VideoRoutes(controller: VideoController) {
   router.post('/:id/multipart/complete', controller.completeMultipart);
 
   // transcoding trigger
-  router.post('/:id/complete', controller.CompleteUpload);
+  router.post('/:id/complete', controller.completeUpload);
 
   // tracking & query
   router.get('/', controller.findAll);

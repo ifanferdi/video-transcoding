@@ -13,7 +13,7 @@ import moment from 'moment';
  */
 export default class GeneratePresignUrl extends BaseUseCase {
   async execute(body: PresignUploadDto) {
-    const { filename: title, fileSize } = body;
+    const { filename: title, fileSize, thumbnailTimestamp } = body;
 
     if (fileSize > config.maxSize)
       throw new ErrorBadRequest(
@@ -34,6 +34,7 @@ export default class GeneratePresignUrl extends BaseUseCase {
       title,
       sourceKey,
       status: VideoStatus.uploading,
+      thumbnailTimestamp,
     });
 
     return {

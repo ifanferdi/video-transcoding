@@ -11,7 +11,7 @@ export default {
     multipartThreshold: MULTIPART_THRESHOLD,
     multipartChunkSize: MULTIPART_CHUNK_SIZE,
     multipartMaxSize: SINGLE_MAX_SIZE,
-    defaultThumbnailTimestamp: Number(process.env.DEFAULT_THUMBNAIL_TIMESTAMP) || 10,
+    defaultThumbnailTimestamp: Number(process.env.DEFAULT_THUMBNAIL_TIMESTAMP) || 0,
   },
   s3: {
     region: process.env.S3_REGION || 'us-east-1',

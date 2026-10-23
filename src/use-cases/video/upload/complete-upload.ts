@@ -1,13 +1,12 @@
 import { ErrorBadRequest, ErrorNotFound } from '@/helpers/error.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import BaseUseCase from '@/use-cases/_base-use-case';
-import { TriggerTranscodeDto } from '@/validations/video-validation';
 export interface TranscodeJobMessage {
   id: number;
 }
 
 export default class CompleteUpload extends BaseUseCase {
-  async execute(id: number, body: TriggerTranscodeDto = {}) {
+  async execute(id: number) {
     const video = await this.repositories.videoRepository.findOne({ id });
     if (!video) throw new ErrorNotFound('Video not found.');
 
