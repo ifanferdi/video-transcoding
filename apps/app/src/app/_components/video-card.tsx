@@ -2,9 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { Progress, ProgressStage, Video, VideoStatus } from "@/domain/video.types";
-import { getMasterMaxQuality } from "@/features/videos/api";
-import { dummyDuration, formatBytes, formatDate } from "@/lib/helper";
-import { useQuery } from "@tanstack/react-query";
+import { formatBytes, formatDate, formatDuration } from "@/lib/helper";
 import { CircleAlert, Film, Play, Trash2 } from "lucide-react";
 
 interface VideoCardProps {
@@ -70,16 +68,6 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
 
   const thumbnailUrl = video.playback?.thumbnailUrl;
 
-  const masterUrl = video?.playback?.masterUrl;
-
-  const maxQualityQuery = useQuery({
-    queryKey: ["hls-max", video.id],
-    queryFn: () => getMasterMaxQuality(masterUrl!),
-    enabled: !!masterUrl,
-    staleTime: Infinity,
-  });
-  const maxQuality = maxQualityQuery.data ?? null;
-
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:bg-surface-hover">
       <button
@@ -119,9 +107,9 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
           </span>
         )}
 
-        {isReady && maxQuality && (
+        {isReady && (
           <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-foreground backdrop-blur">
-            {maxQuality}p
+            {video.maxQuality}
           </span>
         )}
 
@@ -140,7 +128,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
         )}
 
         <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-foreground">
-          {dummyDuration(video.fileSize)}
+          {formatDuration(video.duration)}
         </span>
 
         {isProcessing && (

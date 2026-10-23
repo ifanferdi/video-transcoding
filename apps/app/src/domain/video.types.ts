@@ -14,6 +14,8 @@ export interface Video {
   thumbnailKey: string | null;
   fileSize: number | null;
   thumbnailTimestamp: number;
+  maxQuality: string;
+  duration: number;
   error: string | null;
   createdAt: string;
   updatedAt: string;
