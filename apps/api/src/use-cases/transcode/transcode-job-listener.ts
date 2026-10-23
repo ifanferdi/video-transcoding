@@ -173,12 +173,13 @@ export default class TranscodeJobListener extends BaseUseCase {
         onProgress: (rendition, percent) => {
           renditionProgress[rendition] = percent;
 
+          const transcodePercent =
+            Object.values(renditionProgress).reduce((a, b) => a + b, 0) / renditionCount;
           const totalPercent = Math.min(
             100,
-            Object.values(renditionProgress).reduce((a, b) => a + b, thumbnailProgressNum) /
-              renditionCount,
+            thumbnailProgressNum + (transcodePercent / 100) * (100 - thumbnailProgressNum),
           );
-          onProgress?.(TrancodingStatus.PROCESSING, totalPercent);
+          onProgress?.(TrancodingStatus.PROCESSING, Math.round(totalPercent));
         },
       });
 
