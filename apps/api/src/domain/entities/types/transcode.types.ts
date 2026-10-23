@@ -24,6 +24,8 @@ export interface TranscodeJobPayload {
   sourceKey: string;
   outputPrefix: string;
   thumbnailTimestamp: number;
+  duration?: number;
+  maxQuality?: string;
   deleteSourceAfterDone?: boolean;
 }
 
@@ -99,13 +101,3 @@ export const RENDITION_LADDER: RenditionConfig[] = [
     bufsize: '300k',
   },
 ];
-
-/**
- * Ambil rendition yang tingginya tidak melebihi source — mencegah upscaling.
- * Source 480p → 480p ke bawah saja. Source di bawah 144p tetap dapat 1
- * rendition terendah supaya HLS punya minimal satu variant.
- */
-export function filterRenditionsByHeight(sourceHeight: number): RenditionConfig[] {
-  const selected = RENDITION_LADDER.filter((r) => r.height <= sourceHeight);
-  return selected.length ? selected : [RENDITION_LADDER[RENDITION_LADDER.length - 1]];
-}

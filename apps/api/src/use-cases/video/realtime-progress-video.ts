@@ -25,10 +25,10 @@ export default class RealtimeProgressVideo extends BaseUseCase {
     const unsubscribe = await progressHub.subscribe((event) => send(event));
     const release = sseRegistry.add(res);
 
-    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), HEARTBEAT_MS);
+    // const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), HEARTBEAT_MS);
 
     res.on('close', () => {
-      clearInterval(heartbeat);
+      // clearInterval(heartbeat);
       unsubscribe();
       release();
     });

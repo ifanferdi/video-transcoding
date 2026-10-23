@@ -1,15 +1,4 @@
-/**
- * ============================================================
- * THUMBNAIL GENERATOR
- * ============================================================
- * Generate 1 gambar thumbnail dari video source pada timestamp
- * tertentu (detik ke berapa), diminta oleh client saat request
- * upload (misal user pilih frame mana yang mau jadi thumbnail).
- *
- * Dependencies: sama seperti transcode-hls.ts (fluent-ffmpeg)
- * ============================================================
- */
-
+import { RENDITION_LADDER, RenditionConfig } from '@/domain/entities/types/transcode.types';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
@@ -99,4 +88,25 @@ export function clampTimestamp(requested: number, duration: number): number {
   const safeMargin = 0.5; // detik
   const maxAllowed = Math.max(0, duration - safeMargin);
   return Math.min(Math.max(0, requested), maxAllowed);
+}
+
+/**
+ * Ambil rendition yang tingginya tidak melebihi source — mencegah upscaling.
+ * Source 480p → 480p ke bawah saja. Source di bawah 144p tetap dapat 1
+ * rendition terendah supaya HLS punya minimal satu variant.
+ */
+export function filterRenditionsByHeight(sourceHeight: number): RenditionConfig[] {
+  const selected = RENDITION_LADDER.filter((r) => r.height <= sourceHeight);
+  return selected.length ? selected : [RENDITION_LADDER[RENDITION_LADDER.length - 1]];
+}
+
+/**
+ * Rendition ladder mulai dari `maxQuality` (hasil probe saat upload)
+ * sampai kualitas terendah — tanpa probe ulang resolusi source.
+ */
+export function renditionsFromMaxQuality(maxQuality?: string | null): RenditionConfig[] {
+  const index = RENDITION_LADDER.findIndex((r) => r.name === maxQuality);
+
+  // data lama tanpa maxQuality: pakai seluruh ladder
+  return RENDITION_LADDER.slice(index === -1 ? 0 : index);
 }
