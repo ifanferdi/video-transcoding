@@ -8,27 +8,14 @@ type Tracked = { id: number; status: VideoStatus };
 
 const ACTIVE_STATUSES: VideoStatus[] = ["queued", "processing"];
 
-/**
- * `finishing` dikirim per file yang selesai di-upload ke storage (bisa
- * ratusan per job), jadi refetch list ditahan sampai event berhenti.
- * shortcut: tidak ada event terminal dari server, jadi refetch bisa jatuh
- * sebelum status di DB jadi `ready`; pakai event terminal kalau API diubah.
- */
 const REFETCH_DEBOUNCE_MS = 1_000;
 
-/**
- * Stream progres global (GET /api/v1/videos/progress): satu koneksi untuk semua
- * job aktif, event berisi `id`. Server tidak menutup stream, jadi koneksi hanya
- * dibuka selama masih ada job queued/processing.
- */
 export function useProgress(videos: Tracked[]) {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<Record<number, Progress>>({});
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActiveJob = videos.some((video) => ACTIVE_STATUSES.includes(video.status));
 
-  // Timer dibersihkan saat unmount saja — kalau ikut cleanup effect di bawah,
-  // refetch terakhir yang tertunda bisa hilang saat job selesai.
   useEffect(
     () => () => {
       if (refetchTimer.current) clearTimeout(refetchTimer.current);
@@ -39,7 +26,7 @@ export function useProgress(videos: Tracked[]) {
   useEffect(() => {
     if (!hasActiveJob) return;
 
-    const source = new EventSource("/api/proxy/videos/progress");
+    const source = new EventSource("/api/videos/progress");
     source.onmessage = (event) => {
       let payload: ProgressEvent;
       try {
