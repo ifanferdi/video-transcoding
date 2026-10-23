@@ -6,7 +6,7 @@
 /src/infrastructure/database/prisma/generated
 /src/infrastructure/database/migrations/
 .vercel
-.env*
+.env
 AGENTS.md
 PRD.md
 /sql/

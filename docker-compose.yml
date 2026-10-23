@@ -35,8 +35,8 @@ services:
       timeout: 5s
       retries: 10
 
-  minio:
-    image: quay.io/minio/minio:latest
+  s3:
+    image: docker.io/pgsty/silo:RELEASE.2026-10-18T00-00-00Z
     container_name: video-transcoding-minio
     restart: unless-stopped
     command: server /data --console-address ":9002"
@@ -56,8 +56,8 @@ services:
       timeout: 5s
       retries: 10
 
-  minio-init:
-    image: quay.io/minio/mc:latest
+  s3-init:
+    image: s
     container_name: video-transcoding-minio-init
     depends_on:
       minio:
