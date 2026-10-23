@@ -28,7 +28,6 @@ export interface TranscodeJobPayload {
 }
 
 export enum TrancodingStatus {
-  PREPARING = 'preparing',
   PROCESSING = 'processing',
   FINISHING = 'finishing',
   FAILED = 'failed',

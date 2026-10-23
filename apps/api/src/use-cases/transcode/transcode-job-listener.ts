@@ -129,15 +129,14 @@ export default class TranscodeJobListener extends BaseUseCase {
       const isExist = await this.repositories.tools.storageRepository.isExist(sourceKey);
       if (!isExist) throw new ErrorNotFound('Source file not found in storage.');
 
-      onProgress?.(TrancodingStatus.PREPARING, 0);
+      onProgress?.(TrancodingStatus.PROCESSING, 0);
       await this.repositories.tools.storageRepository.downloadFile(sourceKey, sourceLocalPath);
-      onProgress?.(TrancodingStatus.PREPARING, 100);
 
       // ------------------------------------------------------
       // STEP 2: Generate & upload thumbnail
       // ------------------------------------------------------
-      onProgress?.(TrancodingStatus.PROCESSING, 0);
 
+      onProgress?.(TrancodingStatus.PROCESSING, 3);
       const duration = await getVideoDuration(sourceLocalPath);
       const safeTimestamp = clampTimestamp(thumbnailTimestamp, duration);
 

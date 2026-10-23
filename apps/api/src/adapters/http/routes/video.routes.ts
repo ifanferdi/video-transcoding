@@ -15,7 +15,6 @@ export default function VideoRoutes(controller: VideoController) {
 
   // tracking & query
   router.get('/', controller.findAll);
-  router.get('/progress', controller.realtimeProgress);
   router.get('/:id', controller.findOne);
 
   // delete
