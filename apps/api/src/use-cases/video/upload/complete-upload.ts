@@ -1,4 +1,9 @@
 import { ErrorBadRequest, ErrorNotFound } from '@/helpers/error.helper';
+import {
+  filterRenditionsByHeight,
+  getVideoDimensions,
+  getVideoDuration,
+} from '@/helpers/transcode.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import BaseUseCase from '@/use-cases/_base-use-case';
 export interface TranscodeJobMessage {
@@ -24,12 +29,38 @@ export default class CompleteUpload extends BaseUseCase {
     if (!bullmqRepository)
       throw new ErrorBadRequest('Queue unavailable. Transcoding not configured.');
 
-    await bullmqRepository.publishJob<TranscodeJobMessage>('transcode.jobs', { id });
+    const { duration, maxQuality } = await this.inspectSource(sourceKey);
 
-    return this.repositories.videoRepository.update({
+    // simpan metadata dulu supaya worker langsung membaca nilai final,
+    // bukan hasil balapan dengan enqueue job
+    const updated = await this.repositories.videoRepository.update({
       id,
       status: VideoStatus.queued,
+      duration,
+      maxQuality,
       error: null,
     });
+
+    await bullmqRepository.publishJob<TranscodeJobMessage>('transcode.jobs', { id });
+
+    return updated;
+  }
+
+  /**
+   * ffprobe langsung ke object di storage (HTTP range), tanpa download penuh.
+   * maxQuality = rendition tertinggi yang tidak melebihi resolusi source.
+   */
+  private async inspectSource(sourceKey: string) {
+    const sourceUrl = await this.repositories.tools.storageRepository.getInternalUrl(sourceKey);
+
+    const [duration, { height }] = await Promise.all([
+      getVideoDuration(sourceUrl),
+      getVideoDimensions(sourceUrl),
+    ]);
+
+    return {
+      duration: Math.round(duration),
+      maxQuality: filterRenditionsByHeight(height)[0].name,
+    };
   }
 }

@@ -27,6 +27,8 @@ model Video {
   hlsKey             String?     @db.VarChar(500)
   thumbnailKey       String?     @db.VarChar(500)
   fileSize           BigInt?
+  duration           Int? // detik
+  maxQuality         String?     @db.VarChar(20) // nama rendition tertinggi, mis. "1080p"
   thumbnailTimestamp Int?        @default(10)
   error              String?     @db.Text
   createdAt          DateTime    @default(now()) @db.Timestamptz

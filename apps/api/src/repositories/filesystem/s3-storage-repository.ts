@@ -141,6 +141,18 @@ export default class S3StorageRepository {
     });
   }
 
+  /**
+   * URL bertanda tangan via endpoint internal — dipakai server sendiri
+   * (mis. ffprobe baca object langsung tanpa download penuh).
+   */
+  async getInternalUrl(path: string, expiresIn = 300) {
+    return await getSignedUrl(
+      this.getClient(),
+      new GetObjectCommand({ Bucket: BUCKET_NAME, Key: path }),
+      { expiresIn },
+    );
+  }
+
   async getPresignUrl(key: string, size: number, expiresIn = config.expiredTime) {
     const command: PutObjectCommandInput = {
       Bucket: BUCKET_NAME,

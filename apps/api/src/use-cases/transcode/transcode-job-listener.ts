@@ -1,7 +1,6 @@
 import config from '@/config/config';
 import { ProgressEvent } from '@/domain/entities/models/video';
 import {
-  filterRenditionsByHeight,
   JobProgressCallback,
   TrancodingStatus,
   TranscodeJobPayload,
@@ -11,9 +10,9 @@ import { ErrorNotFound } from '@/helpers/error.helper';
 import {
   clampTimestamp,
   generateThumbnail,
-  getVideoDimensions,
   getVideoDuration,
-} from '@/helpers/thumbnail.helper';
+  renditionsFromMaxQuality,
+} from '@/helpers/transcode.helper';
 import { VideoStatus } from '@/infrastructure/database/prisma/generated/enums';
 import * as fs from 'fs';
 import moment from 'moment';
@@ -40,7 +39,14 @@ export default class TranscodeJobListener extends BaseUseCase {
       const outputPrefix = sourceKeyToOutputPrefix(sourceKey);
       const thumbnailTimestamp = video.thumbnailTimestamp ?? DEFAULT_THUMBNAIL_TIMESTAMP;
       const result = await this.processTranscodeJob(
-        { id, sourceKey, outputPrefix, thumbnailTimestamp },
+        {
+          id,
+          sourceKey,
+          outputPrefix,
+          thumbnailTimestamp,
+          duration: video.duration ?? undefined,
+          maxQuality: video.maxQuality ?? undefined,
+        },
         (status, percent, thumbnailKey) => {
           if (!Number.isInteger(percent)) return;
           this.publishProgress(id, status, percent, thumbnailKey);
@@ -108,6 +114,8 @@ export default class TranscodeJobListener extends BaseUseCase {
       sourceKey,
       outputPrefix,
       thumbnailTimestamp,
+      duration: storedDuration,
+      maxQuality,
       deleteSourceAfterDone = false,
     } = payload;
 
@@ -137,7 +145,7 @@ export default class TranscodeJobListener extends BaseUseCase {
       // ------------------------------------------------------
 
       onProgress?.(TrancodingStatus.PROCESSING, 3);
-      const duration = await getVideoDuration(sourceLocalPath);
+      const duration = storedDuration ?? (await getVideoDuration(sourceLocalPath));
       const safeTimestamp = clampTimestamp(thumbnailTimestamp, duration);
 
       await generateThumbnail({
@@ -160,9 +168,8 @@ export default class TranscodeJobListener extends BaseUseCase {
       // ------------------------------------------------------
       // STEP 3: Transcode ke multi-rendition HLS
       // ------------------------------------------------------
-      // Rendition dibatasi resolusi source supaya tidak upscaling.
-      const { height: sourceHeight } = await getVideoDimensions(sourceLocalPath);
-      const renditions = filterRenditionsByHeight(sourceHeight);
+      // Ladder ditentukan maxQuality yang disimpan saat upload — tanpa probe ulang.
+      const renditions = renditionsFromMaxQuality(maxQuality);
       const renditionCount = renditions.length;
       const renditionProgress: Record<string, number> = {};
 
