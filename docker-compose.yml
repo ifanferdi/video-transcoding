@@ -1,0 +1,158 @@
+name: video-transcoding
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: video-transcoding-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - video-transcoding
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: video-transcoding-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - video-transcoding
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  s3:
+    image: docker.io/pgsty/silo:RELEASE.2026-10-18T00-00-00Z
+    container_name: video-transcoding-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9002"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - '9001:9000' # S3 API — dipakai browser untuk upload/download presigned URL
+      - '9003:9002' # console UI
+    volumes:
+      - minio_data:/data
+    networks:
+      - video-transcoding
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  s3-init:
+    # Image silo sudah membawa binary `mc`, jadi tidak perlu image client terpisah.
+    image: docker.io/pgsty/silo:RELEASE.2026-10-18T00-00-00Z
+    container_name: video-transcoding-minio-init
+    depends_on:
+      s3:
+        condition: service_healthy
+    networks:
+      - video-transcoding
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://s3:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${S3_BUCKET} &&
+      mc anonymous set download local/${S3_BUCKET} &&
+      echo 'MinIO bucket ready';
+      "
+
+  migrate:
+    # One-shot: siapkan schema DB sebelum API start.
+    # shortcut: pakai `db push` karena repo belum punya file migrasi; ganti ke
+    # `prisma migrate deploy` begitu migration di-commit.
+    image: video-transcoding-api
+    container_name: video-transcoding-migrate
+    restart: 'no'
+    env_file: .env.api
+    command: ['bunx', 'prisma', 'db', 'push']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - video-transcoding
+
+  api:
+    image: video-transcoding-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: video-transcoding-api
+    restart: unless-stopped
+    env_file: .env.api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '8100:8100'
+    networks:
+      - video-transcoding
+
+  app:
+    build:
+      context: ./apps/app
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* di-inline saat build, jadi harus masuk sebagai build arg.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8100}
+        NEXT_PUBLIC_PROFILE_FULL_NAME: ${NEXT_PUBLIC_PROFILE_FULL_NAME:-}
+        NEXT_PUBLIC_PROFILE_EMAIL: ${NEXT_PUBLIC_PROFILE_EMAIL:-}
+        NEXT_PUBLIC_PROFILE_ROLE: ${NEXT_PUBLIC_PROFILE_ROLE:-}
+        NEXT_PUBLIC_PROFILE_LOCATION: ${NEXT_PUBLIC_PROFILE_LOCATION:-}
+        NEXT_PUBLIC_PROFILE_GITHUB: ${NEXT_PUBLIC_PROFILE_GITHUB:-}
+        NEXT_PUBLIC_PROFILE_LINKEDIN: ${NEXT_PUBLIC_PROFILE_LINKEDIN:-}
+        NEXT_PUBLIC_PROFILE_INSTAGRAM: ${NEXT_PUBLIC_PROFILE_INSTAGRAM:-}
+        NEXT_PUBLIC_PROFILE_WEBSITE: ${NEXT_PUBLIC_PROFILE_WEBSITE:-}
+    container_name: video-transcoding-app
+    restart: unless-stopped
+    env_file: .env.app
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    networks:
+      - video-transcoding
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+networks:
+  video-transcoding:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

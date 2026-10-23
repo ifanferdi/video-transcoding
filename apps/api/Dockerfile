@@ -52,7 +52,6 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/config ./src/config
 COPY --from=builder /app/src/infrastructure/database/prisma/schemas ./src/infrastructure/database/prisma/schemas
 COPY --from=builder /app/src/infrastructure/database/prisma/generated ./src/infrastructure/database/prisma/generated
-COPY --from=builder /app/src/infrastructure/database/migrations ./src/infrastructure/database/migrations
 
 # Tmp dir untuk proses transcoding (dipakai os.tmpdir()/transcode-jobs)
 RUN mkdir -p /tmp/transcode-jobs && chown -R app:app /app /tmp/transcode-jobs

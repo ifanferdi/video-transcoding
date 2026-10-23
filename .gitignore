@@ -1,3 +1,7 @@
 .idea
 .next
 *.DS_Store
+
+# deployment env (pakai file .example sebagai template)
+.env.api
+.env.app
