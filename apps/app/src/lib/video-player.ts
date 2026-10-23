@@ -1,8 +1,8 @@
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import "video.js/dist/video-js.css";
-import "videojs-contrib-quality-menu/dist/videojs-contrib-quality-menu.css";
 import "videojs-contrib-quality-menu";
+import "videojs-contrib-quality-menu/dist/videojs-contrib-quality-menu.css";
 
 interface QualityMenuOptions {
   sdBitrateLimit?: number;

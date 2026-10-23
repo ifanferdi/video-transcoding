@@ -1,8 +1,9 @@
-export type VideoStatus = "uploading" | "queued" | "processing" | "ready" | "failed";
+// "finishing" hanya state sementara di cache client (dari SSE), server tetap mengirim processing/ready.
+export type VideoStatus = "uploading" | "queued" | "processing" | "finishing" | "ready" | "failed";
 
-export type ProgressStage = "preparing" | "processing" | "finishing" | "failed";
+export type ProgressStage = "processing" | "finishing" | "failed";
 
-export type QualityLabel = "360" | "480" | "720" | "1080";
+export type QualityLabel = "144" | "240" | "360" | "480" | "720" | "1080";
 
 export interface Video {
   id: number;
@@ -13,6 +14,8 @@ export interface Video {
   thumbnailKey: string | null;
   fileSize: number | null;
   thumbnailTimestamp: number;
+  maxQuality: string;
+  duration: number;
   error: string | null;
   createdAt: string;
   updatedAt: string;

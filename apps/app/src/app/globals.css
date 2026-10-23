@@ -12,7 +12,7 @@
   --color-status-uploading: oklch(82.8% 0.189 84.429);
   --color-status-queued: oklch(62.7% 0.265 303.9);
   --color-status-processing: #1d4ed8;
-  --color-status-ready: #15803d;
+  --color-status-finishing: #15803d;
   --color-status-failed: var(--color-accent-hover);
   /* Teks/ikon error di atas surface gelap — versi terang dari status-failed. */
   --color-status-failed-text: #f87171;

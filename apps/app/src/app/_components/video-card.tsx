@@ -2,9 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { Progress, ProgressStage, Video, VideoStatus } from "@/domain/video.types";
-import { getMasterMaxQuality } from "@/features/videos/api";
-import { dummyDuration, formatBytes, formatDate } from "@/lib/helper";
-import { useQuery } from "@tanstack/react-query";
+import { formatBytes, formatDate, formatDuration } from "@/lib/helper";
 import { CircleAlert, Film, Play, Trash2 } from "lucide-react";
 
 interface VideoCardProps {
@@ -22,29 +20,37 @@ const THUMB_GRADIENTS = [
   "linear-gradient(135deg, #1b2735 0%, #090a0f 50%, #4a69bd 100%)",
 ];
 
-const STATUS_META: Record<VideoStatus, { label: string; className: string }> = {
+const STATUS_META: Record<VideoStatus, { label: string; badge: string; percent: string }> = {
   uploading: {
     label: "Uploading",
-    className: "bg-status-uploading/80",
+    badge: "bg-status-uploading/80",
+    percent: "bg-status-uploading",
   },
   queued: {
     label: "Queued",
-    className: "bg-status-queued/80",
+    badge: "bg-status-queued/80",
+    percent: "bg-status-queued",
   },
   processing: {
     label: "Processing",
-    className: "bg-status-processing/80",
+    badge: "bg-status-processing/80",
+    percent: "bg-status-processing",
   },
-  ready: { label: "Ready", className: "bg-status-ready/80" },
+  finishing: {
+    label: "Finishing",
+    badge: "bg-status-finishing/80",
+    percent: "bg-status-finishing",
+  },
+  ready: { label: "Ready", badge: "bg-status-ready/80", percent: "bg-status-ready" },
   failed: {
     label: "Failed",
-    className: "bg-status-failed/80",
+    badge: "bg-status-failed/80",
+    percent: "bg-status-failed",
   },
 };
 
 const STAGE_LABEL: Record<ProgressStage, string> = {
-  preparing: "Preparing",
-  processing: "Transcoding",
+  processing: "Processing",
   finishing: "Finishing",
   failed: "Failed",
 };
@@ -53,7 +59,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
   const isReady = video.status === "ready";
   const isQueued = video.status === "queued";
   const isFailed = video.status === "failed";
-  const isProcessing = video.status === "processing";
+  const isProcessing = video.status === "processing" || video.status === "finishing";
   // Backend menolak delete selama job masih queued/processing.
   const canDelete = !isProcessing && video.status !== "queued" && Boolean(onDelete);
   const status = STATUS_META[video.status];
@@ -61,16 +67,6 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
   const gradient = THUMB_GRADIENTS[video.id % THUMB_GRADIENTS.length];
 
   const thumbnailUrl = video.playback?.thumbnailUrl;
-
-  const masterUrl = video?.playback?.masterUrl;
-
-  const maxQualityQuery = useQuery({
-    queryKey: ["hls-max", video.id],
-    queryFn: () => getMasterMaxQuality(masterUrl!),
-    enabled: !!masterUrl,
-    staleTime: Infinity,
-  });
-  const maxQuality = maxQualityQuery.data ?? null;
 
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:bg-surface-hover">
@@ -105,15 +101,15 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
 
         {!isReady && (
           <span
-            className={`absolute right-3 top-3 rounded-md px-2 py-0.5 text-xs font-semibold text-foreground backdrop-blur ${status.className}`}
+            className={`absolute right-3 top-3 rounded-md px-2 py-0.5 text-xs font-semibold text-foreground backdrop-blur ${status.badge}`}
           >
             {status.label}
           </span>
         )}
 
-        {isReady && maxQuality && (
+        {isReady && (
           <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-foreground backdrop-blur">
-            {maxQuality}p
+            {video.maxQuality}
           </span>
         )}
 
@@ -132,7 +128,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
         )}
 
         <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-foreground">
-          {dummyDuration(video.fileSize)}
+          {formatDuration(video.duration)}
         </span>
 
         {isProcessing && (
@@ -143,7 +139,7 @@ export function VideoCard({ video, progress, onPlay, onDelete }: VideoCardProps)
             </div>
             <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/15">
               <div
-                className="h-full rounded-full bg-status-processing transition-[width] duration-150"
+                className={`h-full rounded-full ${progress ? STATUS_META[progress.stage].percent : "bg-status-processing"} transition-[width] duration-150`}
                 style={{ width: `${percent}%` }}
               />
             </div>

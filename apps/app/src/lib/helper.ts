@@ -1,3 +1,5 @@
+import moment from "moment";
+
 export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
 }
@@ -16,25 +18,13 @@ export function formatBytes(bytes: number | null): string {
 }
 
 export function formatDuration(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+  const total = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(total / 3600);
+  const mmss = moment.utc(total * 1000).format("mm:ss");
+  // Jam dihitung manual karena format("HH") moment membungkus di 24 jam.
+  return hours > 0 ? `${String(hours).padStart(2, "0")}:${mmss}` : mmss;
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-export function dummyDuration(fileSize: number | null): string {
-  if (!fileSize) return "0:00";
-  const totalSeconds = Math.max(30, Math.round((fileSize / 1_000_000) * 0.5));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  return moment(iso).format("MMM D");
 }
