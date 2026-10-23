@@ -92,5 +92,7 @@ export async function getMasterMaxQuality(masterUrl: string): Promise<QualityLab
   if (max >= 720) return "720";
   if (max >= 480) return "480";
   if (max >= 360) return "360";
+  if (max >= 240) return "240";
+  if (max >= 144) return "144";
   return null;
 }

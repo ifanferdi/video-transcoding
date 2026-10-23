@@ -1,27 +1,27 @@
 "use client";
 
-import type { Progress, ProgressEvent, VideoStatus } from "@/domain/video.types";
+import type { ListResponse, Progress, ProgressEvent, VideoStatus } from "@/domain/video.types";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Tracked = { id: number; status: VideoStatus };
 
-const ACTIVE_STATUSES: VideoStatus[] = ["queued", "processing"];
+const ACTIVE_STATUSES: VideoStatus[] = ["queued", "processing", "finishing"];
 
-const REFETCH_DEBOUNCE_MS = 1_000;
+const REFETCH_DEBOUNCE_MS = 500;
 
 export function useProgress(videos: Tracked[]) {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<Record<number, Progress>>({});
-  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActiveJob = videos.some((video) => ACTIVE_STATUSES.includes(video.status));
 
-  useEffect(
-    () => () => {
-      if (refetchTimer.current) clearTimeout(refetchTimer.current);
-    },
-    [],
-  );
+  // useEffect(
+  //   () => () => {
+  //     if (refetchTimer.current) clearTimeout(refetchTimer.current);
+  //   },
+  //   [],
+  // );
 
   useEffect(() => {
     if (!hasActiveJob) return;
@@ -51,11 +51,26 @@ export function useProgress(videos: Tracked[]) {
       }
 
       if (payload.status === "finishing") {
-        if (refetchTimer.current) clearTimeout(refetchTimer.current);
-        if (payload.percent >= 100)
-          refetchTimer.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["videos"] });
-          }, REFETCH_DEBOUNCE_MS);
+        // Badge card ikut "Finishing" tanpa menunggu refetch list.
+        queryClient.setQueryData<ListResponse>(
+          ["videos"],
+          (prev) =>
+            prev && {
+              ...prev,
+              data: prev.data.map((video) =>
+                video.id === payload.id ? { ...video, status: "finishing" } : video,
+              ),
+            },
+        );
+        // if (refetchTimer.current) clearTimeout(refetchTimer.current);
+        if (payload.percent >= 100) {
+          // refetchTimer.current = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["videos"] });
+          console.log("eaeae");
+
+          // }, REFETCH_DEBOUNCE_MS);
+          return () => source.close();
+        }
       }
     };
 
