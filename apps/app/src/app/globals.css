@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0a;
+  --color-foreground: #f5f5f5;
+  --color-surface: #141414;
+  --color-surface-hover: #1f1f1f;
+  --color-border: #262626;
+  --color-muted: #a3a3a3;
+  --color-accent: #e50914;
+  --color-accent-hover: #f61b24;
+  --color-status-uploading: oklch(82.8% 0.189 84.429);
+  --color-status-queued: oklch(62.7% 0.265 303.9);
+  --color-status-processing: #1d4ed8;
+  --color-status-ready: #15803d;
+  --color-status-failed: var(--color-accent-hover);
+  /* Teks/ikon error di atas surface gelap — versi terang dari status-failed. */
+  --color-status-failed-text: #f87171;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+::selection {
+  background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
