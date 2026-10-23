@@ -44,6 +44,9 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
   const [playing, setPlaying] = useState<Video | null>(null);
   const [deleting, setDeleting] = useState<Video | null>(null);
 
+  const classHeaderButton =
+    "transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out bg-surface-hover";
+
   const refetchList = () => queryClient.invalidateQueries({ queryKey: ["videos"] });
 
   const lock = async () => {
@@ -61,7 +64,7 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
           <p className="mt-1 text-sm text-muted">Upload & stream video with adaptive quality</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" onClick={() => setAboutOpen(true)}>
+          <Button type="button" className={classHeaderButton} onClick={() => setAboutOpen(true)}>
             <UserRound size={18} />
             About
           </Button>
@@ -82,7 +85,7 @@ export function VideoLibrary({ initialData, initialUnlocked }: VideoLibraryProps
               Lock
             </Button>
           ) : (
-            <Button type="button" variant="outline" onClick={() => setUnlockOpen(true)}>
+            <Button type="button" className={classHeaderButton} onClick={() => setUnlockOpen(true)}>
               <LockOpen size={18} />
               Unlock
             </Button>

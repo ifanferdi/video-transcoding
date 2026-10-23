@@ -1,9 +1,10 @@
 "use client";
 
+import { GithubIcon, InstagramIcon, LinkedinIcon } from "@/components/ui/brand-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { projectIntro, techStack } from "@/config/about";
 import { profile } from "@/config/config";
-import { Mail } from "lucide-react";
+import { Globe, Mail } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -11,16 +12,39 @@ interface AboutDialogProps {
   onClose: () => void;
 }
 
-/**
- * Hanya link yang terisi yang dirender — yang kosong disembunyikan, bukan
- * dinonaktifkan. Label teks, bukan ikon: lucide sudah tidak memuat brand icon.
- */
+/** Hanya link yang terisi yang dirender — yang kosong disembunyikan, bukan dinonaktifkan. */
 const socials = [
-  { key: "github", label: "GitHub", url: profile.social.github },
-  { key: "linkedin", label: "LinkedIn", url: profile.social.linkedin },
-  { key: "instagram", label: "Instagram", url: profile.social.instagram },
-  { key: "website", label: "Website", url: profile.social.website },
+  { key: "github", label: "GitHub", url: profile.social.github, icon: <GithubIcon size={15} /> },
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+    url: profile.social.linkedin,
+    icon: <LinkedinIcon size={15} />,
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    url: profile.social.instagram,
+    icon: <InstagramIcon size={15} />,
+  },
+  { key: "website", label: "Website", url: profile.social.website, icon: <Globe size={15} /> },
 ].filter((social) => social.url);
+
+/**
+ * Tombol link keluar. Sengaja dibedakan dari chip tech stack di bawah: bentuknya
+ * `rounded-lg` + ada shadow saat diam, sedangkan chip `rounded-full` tanpa shadow —
+ * supaya sekilas kelihatan mana yang bisa diklik dan mana yang sekadar label.
+ */
+const socialClass = [
+  "inline-flex items-center gap-2 rounded-lg border border-border bg-surface-hover px-3.5 py-2",
+  "text-xs font-medium text-foreground shadow-sm",
+  "transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out",
+  "hover:border-accent hover:bg-accent hover:shadow-lg hover:shadow-accent/30",
+  "active:translate-y-0 active:scale-[0.97]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+  "motion-reduce:transform-none",
+].join(" ");
 
 const filledGroups = techStack.filter((group) => group.items.length > 0);
 
@@ -80,8 +104,9 @@ export function AboutDialog({ onClose }: AboutDialogProps) {
                 href={social.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-muted hover:text-foreground"
+                className={socialClass}
               >
+                {social.icon}
                 {social.label}
               </a>
             ))}

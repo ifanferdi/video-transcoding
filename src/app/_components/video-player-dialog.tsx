@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Video } from "@/domain/video.types";
 import { createPlayer } from "@/lib/video-player";
+import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface VideoPlayerDialogProps {
   video: Video;
@@ -42,15 +42,10 @@ export function VideoPlayerDialog({ video, onClose }: VideoPlayerDialogProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
-      <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-start justify-between gap-4">
+      <div className="w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-foreground">
-              {video.title}
-            </h2>
-            <p className="text-xs text-muted">
-              Adaptive quality — Auto / 360 / 480 / 720 / 1080
-            </p>
+            <h2 className="truncate text-base font-semibold text-foreground">{video.title}</h2>
           </div>
           <Button
             type="button"
