@@ -1,0 +1,72 @@
+import { CreateRedisConnection } from '@/infrastructure/redis/redis-connection';
+import { createBunRedisClient, JobProgress, Processor, Queue, Worker } from 'bullmq';
+
+export default class BullMqRepository {
+  private queues = new Map<string, Queue>();
+  private workers: Worker[] = [];
+  private closing = false;
+
+  constructor(protected readonly connection = createBunRedisClient(CreateRedisConnection())) {}
+
+  publishJob = async <T = Record<string, any>>(
+    queue: string,
+    data: T,
+    delay = 0 /** miliseconds */,
+    removeOnComplete = true,
+    removeOnFail = false,
+  ) => {
+    const q = this.getQueue(queue);
+
+    return q.add(queue, data, {
+      delay,
+      removeOnComplete,
+      removeOnFail,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5_000 },
+    });
+  };
+
+  subscribeJob = (queue: string, callback: Processor<any, any, any, JobProgress>) => {
+    const worker = new Worker(queue, callback, { connection: this.connection });
+    this.workers.push(worker);
+
+    return worker;
+  };
+
+  /**
+   * Graceful shutdown:
+   * 1. Worker berhenti ambil job baru & tunggu job aktif selesai (timeout default BullMQ)
+   * 2. Tutup semua instance Queue
+   * 3. Tutup koneksi Redis bersama (owner-nya repo ini, bukan BullMQ)
+   */
+  async close() {
+    if (this.closing) return;
+    this.closing = true;
+
+    await Promise.allSettled(this.workers.map((worker) => worker.close()));
+    await Promise.allSettled([...this.queues.values()].map((queue) => queue.close()));
+
+    this.workers = [];
+    this.queues.clear();
+
+    try {
+      await this.connection.quit();
+    } catch {
+      // koneksi mungkin sudah tertutup — abaikan
+    }
+  }
+
+  /**
+   * Cache instance Queue per nama — hindari membuat instance baru
+   * per publish (memory leak listener + state BullMQ).
+   */
+  getQueue(queue: string) {
+    let instance = this.queues.get(queue);
+    if (!instance) {
+      instance = new Queue(queue, { connection: this.connection });
+      this.queues.set(queue, instance);
+    }
+
+    return instance;
+  }
+}

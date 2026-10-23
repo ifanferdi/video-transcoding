@@ -1,0 +1,722 @@
+{
+  "info": {
+    "name": "Video Transcoding API",
+    "description": "Collection for /api/v1/videos endpoints.\n\nFlow single PUT:\n1. Presign Upload (status=uploading, dapat upload.presignUrl)\n2. PUT file ke `upload.presignUrl` (di luar API), header Content-Type sama\n3. Trigger Transcode\n4. Get Video (poll status) atau Stream Progress (SSE)\n\nFlow multipart:\n1. Create Multipart (dapat uploadId + presignPartUrls)\n2. PUT tiap part ke `upload.presignUrl` (0-based index → partNumber = i+1)\n3. Complete Multipart (etag dari response header ETag tiap PUT)\n4. Trigger Transcode\n5. Get Video (poll status) atau Stream Progress (SSE)\n\nCatatan: response presign/multipart/transcode mengembalikan field video di root (bukan dibungkus `video`); hanya Complete Multipart yang mengembalikan `{ video }`. Stream Progress bersifat global untuk semua job aktif (tanpa id).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8100"
+    },
+    {
+      "key": "id",
+      "value": "1"
+    },
+    {
+      "key": "uploadId",
+      "value": ""
+    },
+    {
+      "key": "sourceKey",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "API Index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"name\": \"Video Transcoding API\",\n  \"version\": \"1.0.0\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Videos",
+      "item": [
+        {
+          "name": "List Videos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/videos?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "videos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Gunakan -1 untuk semua data."
+                },
+                {
+                  "key": "status",
+                  "value": "ready",
+                  "disabled": true,
+                  "description": "uploading | queued | processing | ready | failed"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Cari berdasarkan title."
+                }
+              ]
+            },
+            "description": "List semua video (job tracking). Response dibungkus `{ data, meta }`."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/v1/videos?page=1&limit=10"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"sample.mp4\",\n      \"status\": \"ready\",\n      \"sourceKey\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n      \"hlsKey\": \"videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/master.m3u8\",\n      \"thumbnailKey\": \"videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/thumbnail.jpg\",\n      \"fileSize\": null,\n      \"thumbnailTimestamp\": 10,\n      \"error\": null,\n      \"createdAt\": \"2026-10-08T08:00:00.000Z\",\n      \"updatedAt\": \"2026-10-08T08:03:21.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"page\": 1,\n    \"limit\": 10,\n    \"total\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.id) pm.collectionVariables.set('id', String(json.id));",
+                  "if (json?.sourceKey) pm.collectionVariables.set('sourceKey', json.sourceKey);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}",
+            "description": "Detail video + status. Saat status `ready`, response menyertakan `playback.masterUrl` dan `playback.thumbnailUrl` (signed URL)."
+          },
+          "response": [
+            {
+              "name": "200 — Ready",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/v1/videos/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"title\": \"sample.mp4\",\n  \"status\": \"ready\",\n  \"sourceKey\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n  \"hlsKey\": \"videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/master.m3u8\",\n  \"thumbnailKey\": \"videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/thumbnail.jpg\",\n  \"fileSize\": null,\n  \"thumbnailTimestamp\": 10,\n  \"error\": null,\n  \"createdAt\": \"2026-10-08T08:00:00.000Z\",\n  \"updatedAt\": \"2026-10-08T08:03:21.000Z\",\n  \"playback\": {\n    \"expiresIn\": \"2026-10-08T09:03:21.000Z\",\n    \"masterUrl\": \"http://localhost:9000/video-transcoding/videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/master.m3u8?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc123\",\n    \"thumbnailUrl\": \"http://localhost:9000/video-transcoding/videos/output/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456/thumbnail.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=def456\"\n  }\n}"
+            },
+            {
+              "name": "200 — Uploading (belum ready)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/v1/videos/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"title\": \"sample.mp4\",\n  \"status\": \"uploading\",\n  \"sourceKey\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n  \"hlsKey\": null,\n  \"thumbnailKey\": null,\n  \"fileSize\": null,\n  \"thumbnailTimestamp\": 10,\n  \"error\": null,\n  \"createdAt\": \"2026-10-08T08:00:00.000Z\",\n  \"updatedAt\": \"2026-10-08T08:00:00.000Z\"\n}"
+            },
+            {
+              "name": "404 — Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/v1/videos/9999"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Video not found.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 202) pm.collectionVariables.set('id', '');"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}",
+            "description": "Hapus video + seluruh object S3 (source, segment HLS, thumbnail) secara async via queue worker `delete.jobs`.\nDitolak 409 kalau status masih `queued`/`processing`.\nRecord DB dihapus setelah storage bersih (gagal → retry otomatis)."
+          },
+          "response": [
+            {
+              "name": "202 — Accepted",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/videos/1"
+              },
+              "status": "Accepted",
+              "code": 202,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"message\": \"Video deletion queued.\"\n}"
+            },
+            {
+              "name": "409 — Conflict (job in progress)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/videos/1"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Video is processing. Wait for the job to finish before deleting.\"\n}"
+            },
+            {
+              "name": "404 — Not Found",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/videos/9999"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Video not found.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Upload — Single PUT",
+      "item": [
+        {
+          "name": "Presign Upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.id) pm.collectionVariables.set('id', String(json.id));",
+                  "if (json?.sourceKey) pm.collectionVariables.set('sourceKey', json.sourceKey);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 1048576\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/presign",
+            "description": "Buat video record (status=uploading) + presigned PUT URL.\ncontentType: video/mp4 | video/webm | video/quicktime | video/x-matroska\nfileSize max = UPLOAD_SINGLE_MAX_SIZE (default 500MB).\nSetelah ini: PUT binary ke upload.presignUrl dengan header Content-Type sama."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 1048576\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/presign"
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"title\": \"sample.mp4\",\n  \"status\": \"uploading\",\n  \"sourceKey\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n  \"hlsKey\": null,\n  \"thumbnailKey\": null,\n  \"fileSize\": null,\n  \"thumbnailTimestamp\": 10,\n  \"error\": null,\n  \"createdAt\": \"2026-10-08T08:00:00.000Z\",\n  \"updatedAt\": \"2026-10-08T08:00:00.000Z\",\n  \"upload\": {\n    \"key\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n    \"method\": \"PUT\",\n    \"presignUrl\": \"http://localhost:9000/video-transcoding/videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=abc123\",\n    \"expiresAt\": \"2026-10-08T09:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — File too large",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/v1/videos/presign"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"File too large for single upload (209715200 bytes). Use multipart upload endpoint.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Upload — Multipart",
+      "item": [
+        {
+          "name": "Create Multipart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.id) pm.collectionVariables.set('id', String(json.id));",
+                  "if (json?.upload?.uploadId) pm.collectionVariables.set('uploadId', json.upload.uploadId);",
+                  "if (json?.upload?.key) pm.collectionVariables.set('sourceKey', json.upload.key);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"large-sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 209715200\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/multipart",
+            "description": "Init multipart upload untuk file besar (fileSize > UPLOAD_MULTIPART_THRESHOLD, default 100MB).\nResponse sudah berisi upload.presignPartUrls. PUT tiap chunk ke URL itu (chunkSize per part), simpan ETag."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"large-sample.mp4\",\n  \"fileType\": \"video\",\n  \"contentType\": \"video/mp4\",\n  \"fileSize\": 209715200\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/multipart"
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 2,\n  \"title\": \"large-sample.mp4\",\n  \"status\": \"uploading\",\n  \"sourceKey\": \"videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4\",\n  \"hlsKey\": null,\n  \"thumbnailKey\": null,\n  \"fileSize\": null,\n  \"thumbnailTimestamp\": 10,\n  \"error\": null,\n  \"createdAt\": \"2026-10-08T08:10:00.000Z\",\n  \"updatedAt\": \"2026-10-08T08:10:00.000Z\",\n  \"upload\": {\n    \"key\": \"videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4\",\n    \"uploadId\": \"2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890\",\n    \"chunkSize\": 10485760,\n    \"totalParts\": 20,\n    \"expiresIn\": 3600,\n    \"presignPartUrls\": [\n      \"http://localhost:9000/video-transcoding/videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4?partNumber=1&uploadId=2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890&X-Amz-Signature=abc123\",\n      \"http://localhost:9000/video-transcoding/videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4?partNumber=2&uploadId=2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890&X-Amz-Signature=def456\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Presign Parts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uploadId\": \"{{uploadId}}\",\n  \"partNumbers\": [1, 2, 3]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/multipart/parts/presign",
+            "description": "Presigned URL untuk part tertentu (batch). partNumbers max 1000 item, tiap part max 10000."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"uploadId\": \"2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890\",\n  \"partNumbers\": [1, 2, 3]\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/2/multipart/parts/presign"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"key\": \"videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4\",\n  \"expiresIn\": 3600,\n  \"parts\": [\n    {\n      \"partNumber\": 1,\n      \"presignUrl\": \"http://localhost:9000/video-transcoding/videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4?partNumber=1&uploadId=2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890&X-Amz-Signature=abc123\"\n    },\n    {\n      \"partNumber\": 2,\n      \"presignUrl\": \"http://localhost:9000/video-transcoding/videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4?partNumber=2&uploadId=2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890&X-Amz-Signature=def456\"\n    },\n    {\n      \"partNumber\": 3,\n      \"presignUrl\": \"http://localhost:9000/video-transcoding/videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4?partNumber=3&uploadId=2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890&X-Amz-Signature=ghi789\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 — Invalid uploadId",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/v1/videos/2/multipart/parts/presign"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Invalid or expired uploadId.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Complete Multipart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.video?.id) pm.collectionVariables.set('id', String(json.video.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uploadId\": \"{{uploadId}}\",\n  \"parts\": [\n    { \"partNumber\": 1, \"etag\": \"REPLACE_WITH_ETAG_PART_1\" },\n    { \"partNumber\": 2, \"etag\": \"REPLACE_WITH_ETAG_PART_2\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/multipart/complete",
+            "description": "etag = header ETag dari response PUT tiap part (termasuk tanda kutip jika S3 mengirimnya).\nResponse: `{ video }` (status tetap `uploading` sampai trigger transcode)."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"uploadId\": \"2~aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890\",\n  \"parts\": [\n    { \"partNumber\": 1, \"etag\": \"\\\"5d41402abc4b2a76b9719d911017c592\\\"\" },\n    { \"partNumber\": 2, \"etag\": \"\\\"7d793037a0760186574b0282f2f435e7\\\"\" }\n  ]\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/2/multipart/complete"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"video\": {\n    \"id\": 2,\n    \"title\": \"large-sample.mp4\",\n    \"status\": \"uploading\",\n    \"sourceKey\": \"videos/source/2026/7a1b2c3d-4e5f-6789-abcd-ef0123456789.mp4\",\n    \"hlsKey\": null,\n    \"thumbnailKey\": null,\n    \"fileSize\": null,\n    \"thumbnailTimestamp\": 10,\n    \"error\": null,\n    \"createdAt\": \"2026-10-08T08:10:00.000Z\",\n    \"updatedAt\": \"2026-10-08T08:12:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transcode",
+      "item": [
+        {
+          "name": "Trigger Transcode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.id) pm.collectionVariables.set('id', String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/api/v1/videos/{{id}}/complete",
+            "description": "Verifikasi object source ada di storage, lalu enqueue job transcoding (BullMQ). Body opsional: { \"uploadId\": \"...\" }.\nResponse: video di root dengan status `queued`."
+          },
+          "response": [
+            {
+              "name": "202 — Accepted",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/1/complete"
+              },
+              "status": "Accepted",
+              "code": 202,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"title\": \"sample.mp4\",\n  \"status\": \"queued\",\n  \"sourceKey\": \"videos/source/2026/5f3c9b2e-1a2b-4c3d-8e9f-abcdef123456.mp4\",\n  \"hlsKey\": null,\n  \"thumbnailKey\": null,\n  \"fileSize\": null,\n  \"thumbnailTimestamp\": 10,\n  \"error\": null,\n  \"createdAt\": \"2026-10-08T08:00:00.000Z\",\n  \"updatedAt\": \"2026-10-08T08:04:00.000Z\"\n}"
+            },
+            {
+              "name": "400 — Source not found",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/v1/videos/1/complete"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Source file not found in storage. Upload not complete.\"\n}"
+            },
+            {
+              "name": "400 — Already processing/ready",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": "{{baseUrl}}/api/v1/videos/1/complete"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Video already processing.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Progress",
+      "item": [
+        {
+          "name": "Stream Progress (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/videos/progress",
+            "description": "Server-Sent Events (text/event-stream) — GLOBAL untuk semua job transcode yang sedang berjalan (tanpa id).\nSaat connect: kirim snapshot semua job aktif (key Redis `progress:active`), lalu event live via Redis Pub/Sub (aman multi-replica, tanpa sticky session).\nEvent: `data: { id, status, percent, updatedAt }`.\nstatus: preparing | processing | finishing | failed.\nStream TIDAK ditutup server — job selesai hanya berhenti dikirim, koneksi tetap terbuka untuk job berikutnya; tutup dari client.\nHeartbeat: `: heartbeat` setiap 30 detik.\npercent gabungan antar-rendition bisa > 100 → clamp min(percent, 100).\nCatatan: Postman desktop mendukung menampilkan SSE; gunakan curl jika ingin raw."
+          },
+          "response": [
+            {
+              "name": "200 — Event Stream (contoh body)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "text/event-stream"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/videos/progress"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/event-stream"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "X-Accel-Buffering",
+                  "value": "no"
+                }
+              ],
+              "cookie": [],
+              "_postman_previewlanguage": "text",
+              "body": "data: {\"id\":1,\"status\":\"preparing\",\"percent\":0,\"updatedAt\":\"2026-10-08T08:04:01.000Z\"}\n\ndata: {\"id\":2,\"status\":\"preparing\",\"percent\":0,\"updatedAt\":\"2026-10-08T08:10:02.000Z\"}\n\ndata: {\"id\":1,\"status\":\"processing\",\"percent\":45,\"updatedAt\":\"2026-10-08T08:04:45.000Z\"}\n\ndata: {\"id\":2,\"status\":\"failed\",\"percent\":0,\"updatedAt\":\"2026-10-08T08:11:10.000Z\"}\n\ndata: {\"id\":1,\"status\":\"finishing\",\"percent\":100,\"updatedAt\":\"2026-10-08T08:05:21.000Z\"}\n\n"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
